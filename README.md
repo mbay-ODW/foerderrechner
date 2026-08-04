@@ -11,8 +11,23 @@ eigenem Logo.
 
 ## Stand
 
-Aktuell: Infrastruktur-Skelett (FastAPI + statisches Frontend, Settings/Branding,
-Deployment). Die Förderlogik wird schrittweise ergänzt (siehe Plan).
+Live unter `https://forderrechner.bay-ram.de` (Authelia-geschützt). Fertig:
+
+- BEG-Einzelmaßnahmen (Hülle/Anlagentechnik/Heizungsoptimierung/Fachplanung),
+  ALT+NEU-Regime, iSFP-/WPB-Bonus, Höchstgrenzen-Deckelung
+- BEG-Heizungsförderung (Grundförderung, KGB, Einkommensbonus, EU-Wertschöpfungsbonus,
+  Familienzuschlag, Degressionsstaffeln)
+- BEG WG/NWG systemische Sanierung (Effizienzhaus/-gebäude, Tilgungszuschuss/
+  kommunaler Zuschuss, WPB/SerSan/NH-Boni)
+- § 35c EStG-Steuerbonus als mitgerechnete Alternative pro Maßnahme
+- PDF-Export mit Branding (Logo/Firmenname/Kontakt/Akzentfarbe)
+- Beta: KfW-Nebenprogramme (Jung kauft Alt, Wohneigentumsprogramm, Altersgerecht
+  Umbauen, Gewerbe zu Wohnen) + iSFP-Erstellungsförderung — **nicht** durch die
+  Skill-Referenzen abgesichert, klar als unverifiziert gekennzeichnet
+
+Alle skill-gestützten Module (BEG EM/Heizung/systemisch, §35c) sind gegen die
+Rechenbeispiele aus `beg-em-foerderung/references/*.md` per Unit-Test verifiziert
+(`tests/`, 36 Tests).
 
 ## Lokal starten
 
