@@ -10,6 +10,8 @@ services:
       - TZ=Europe/Berlin
       - DATA_DIR=/data
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - HERO_TOKEN=${HERO_TOKEN:-}
+      - HERO_URL=${HERO_URL:-}
     volumes:
       - /mnt/apps/foerderrechner/data:/data:rw
     networks:

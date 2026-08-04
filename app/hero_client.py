@@ -20,9 +20,7 @@ from typing import Any
 
 import httpx
 
-HERO_URL = os.environ.get(
-    "HERO_URL", "https://login.hero-software.de/api/external/v7/graphql"
-)
+HERO_URL = os.environ.get("HERO_URL") or "https://login.hero-software.de/api/external/v7/graphql"
 HERO_TOKEN = os.environ.get("HERO_TOKEN", "")
 
 SEARCH_QUERY = """
