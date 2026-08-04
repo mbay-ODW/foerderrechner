@@ -25,6 +25,13 @@ from pydantic import BaseModel
 
 from . import settings_store
 from .calc.engine import berechne
+from .calc.kfw_nebenprogramme import (
+    altersgerecht_umbauen,
+    gewerbe_zu_wohnen,
+    isfp_erstellungsfoerderung,
+    jung_kauft_alt,
+    wohneigentumsprogramm,
+)
 from .calc.models import CalcInput
 from .pdf_export import generate_pdf
 from .settings_store import (
@@ -87,6 +94,29 @@ def post_pdf_export(req: CalcInput) -> Response:
         content=pdf_bytes, media_type="application/pdf",
         headers={"Content-Disposition": 'inline; filename="Foerderberechnung.pdf"'},
     )
+
+
+# ---------- Beta: KfW-Nebenprogramme + iSFP-Erstellungsförderung ----------
+
+
+class BetaRequest(BaseModel):
+    anzahl_kinder: int = 1
+    zve_haushalt: float | None = None
+    anzahl_we: int = 1
+    isfp_kosten: float | None = None
+
+
+@app.post("/api/beta/nebenprogramme")
+def post_beta_nebenprogramme(req: BetaRequest) -> dict[str, Any]:
+    ergebnisse = [
+        jung_kauft_alt(req.anzahl_kinder, req.zve_haushalt),
+        wohneigentumsprogramm(),
+        altersgerecht_umbauen(req.anzahl_we),
+        gewerbe_zu_wohnen(),
+    ]
+    if req.isfp_kosten:
+        ergebnisse.append(isfp_erstellungsfoerderung(req.isfp_kosten, req.anzahl_we))
+    return {"programme": ergebnisse}
 
 
 # ---------- Settings ----------

@@ -129,6 +129,38 @@
         </div>
       </section>
 
+      <section class="card">
+        <div class="row-header">
+          <h2>Weitere Förderprogramme <span class="badge">Beta</span></h2>
+          <label class="checkbox-label" style="flex:0 0 auto;"><input type="checkbox" id="beta-aktiv" /> aktivieren</label>
+        </div>
+        <p class="muted small">
+          Jung kauft Alt, Wohneigentumsprogramm, Altersgerecht Umbauen, Gewerbe zu
+          Wohnen, iSFP-Erstellungsförderung. <strong>Nicht durch die Skill-Referenzen
+          abgesichert</strong> — Werte vor Kundenberatung im aktuellen KfW-/BAFA-Merkblatt prüfen.
+        </p>
+        <div id="beta-felder" class="hidden">
+          <div class="row-3">
+            <label>
+              <span>Anzahl Kinder (Jung kauft Alt)</span>
+              <input id="beta-kinder" type="number" min="0" value="1" />
+            </label>
+            <label>
+              <span>zvE Haushalt (€/Jahr, optional)</span>
+              <input id="beta-zve" type="number" min="0" placeholder="optional" />
+            </label>
+            <label>
+              <span>iSFP-Erstellungskosten (€, optional)</span>
+              <input id="beta-isfp-kosten" type="number" min="0" placeholder="optional" />
+            </label>
+          </div>
+          <div class="row">
+            <button id="btn-beta-berechnen" class="secondary" type="button">Beta-Programme prüfen</button>
+          </div>
+          <div id="beta-ergebnis"></div>
+        </div>
+      </section>
+
       <div class="row">
         <button id="btn-berechnen" class="primary">Förderung berechnen</button>
       </div>

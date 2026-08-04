@@ -299,6 +299,50 @@ function renderHeizungBlock(block) {
   `;
 }
 
+$("beta-aktiv").addEventListener("change", () => {
+  $("beta-felder").classList.toggle("hidden", !$("beta-aktiv").checked);
+});
+
+$("btn-beta-berechnen").addEventListener("click", async () => {
+  const btn = $("btn-beta-berechnen");
+  btn.disabled = true;
+  btn.textContent = "Prüfe…";
+  try {
+    const res = await fetch("/api/beta/nebenprogramme", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        anzahl_kinder: parseInt($("beta-kinder").value, 10) || 0,
+        zve_haushalt: parseFloat($("beta-zve").value) || null,
+        anzahl_we: parseInt($("anzahl-we").value, 10) || 1,
+        isfp_kosten: parseFloat($("beta-isfp-kosten").value) || null,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+
+    const html = data.programme.map(p => `
+      <div class="ergebnis-massnahme">
+        <div class="ergebnis-massnahme-head">
+          <strong>${p.programm}</strong>
+          <span class="badge">Beta — ungeprüft</span>
+        </div>
+        <div class="muted small">${p.hinweis}</div>
+        ${p.kredit_max ? `<div class="small">Kredit max.: ${euro(p.kredit_max)}</div>` : ""}
+        ${p.einkommensgrenze ? `<div class="small">Einkommensgrenze: ${euro(p.einkommensgrenze)}${p.vermutlich_berechtigt === false ? " — vermutlich nicht erfüllt" : ""}</div>` : ""}
+        ${p.betrag !== undefined ? `<div class="small">Zuschuss: ${euro(p.betrag)} (${(p.satz * 100).toFixed(0)}%, max. ${euro(p.hoechstbetrag)})</div>` : ""}
+        <div class="hint" style="margin-top:8px;">${p.pruefhinweis}</div>
+      </div>
+    `).join("");
+    $("beta-ergebnis").innerHTML = html;
+  } catch (e) {
+    toast(`Fehler: ${e.message}`, "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Beta-Programme prüfen";
+  }
+});
+
 let lastPayload = null;
 
 async function exportPdf() {
