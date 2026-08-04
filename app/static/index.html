@@ -26,10 +26,57 @@
     </header>
 
     <div id="app-root">
-      <div class="card empty-state">
-        <p>Der Rechner wird als Nächstes gebaut (BEG-EM-Kern).</p>
-        <p class="small">Infrastruktur, Branding und Settings sind bereits einsatzbereit.</p>
+      <section class="card">
+        <h2>Projekt</h2>
+        <div class="row-3">
+          <label>
+            <span>Antragsdatum</span>
+            <input id="antragsdatum" type="text" placeholder="JJJJ-MM-TT" />
+          </label>
+          <label>
+            <span>Regime</span>
+            <select id="regime">
+              <option value="AUTO">Automatisch (nach Antragsdatum)</option>
+              <option value="ALT">ALT (Bestandsprojekt / Bescheid vor 21.07.2026)</option>
+              <option value="NEU">NEU</option>
+            </select>
+          </label>
+          <label>
+            <span>Gebäudetyp</span>
+            <select id="gebaeude-typ">
+              <option value="WG">Wohngebäude</option>
+              <option value="NWG">Nichtwohngebäude</option>
+            </select>
+          </label>
+        </div>
+        <div class="row-3">
+          <label id="feld-anzahl-we">
+            <span>Anzahl Wohneinheiten</span>
+            <input id="anzahl-we" type="number" min="1" value="1" />
+          </label>
+          <label id="feld-nwg-flaeche" class="hidden">
+            <span>NWG-Nettoraumfläche (m²)</span>
+            <input id="nwg-flaeche" type="number" min="0" value="0" />
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="row-header">
+          <h2>BEG-Einzelmaßnahmen</h2>
+        </div>
+        <p class="muted small">Gebäudehülle, Anlagentechnik, Heizungsoptimierung, Fachplanung &amp; Baubegleitung.</p>
+        <div id="massnahmen-liste"></div>
+        <div class="row">
+          <button id="btn-add-massnahme" class="secondary" type="button">+ Maßnahme hinzufügen</button>
+        </div>
+      </section>
+
+      <div class="row">
+        <button id="btn-berechnen" class="primary">Förderung berechnen</button>
       </div>
+
+      <div id="ergebnis"></div>
     </div>
 
     <div id="toast" class="toast hidden"></div>

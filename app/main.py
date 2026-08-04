@@ -24,6 +24,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import settings_store
+from .calc.engine import berechne
+from .calc.models import CalcInput
 from .settings_store import (
     delete_logo,
     ensure_bootstrap,
@@ -56,6 +58,18 @@ class SettingsUpdate(BaseModel):
     kontakt_telefon: str | None = None
     kontakt_email: str | None = None
     akzentfarbe: str | None = None
+
+
+# ---------- Berechnung ----------
+
+
+@app.post("/api/calc")
+def post_calc(req: CalcInput) -> dict[str, Any]:
+    try:
+        return berechne(req)
+    except Exception as exc:
+        log.exception("Berechnung fehlgeschlagen")
+        raise HTTPException(400, f"Berechnung fehlgeschlagen: {exc}") from exc
 
 
 # ---------- Settings ----------

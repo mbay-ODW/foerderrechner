@@ -7,3 +7,6 @@ venv/
 .vscode/
 *.log
 data/
+.venv/
+.pytest_cache/
+__pycache__/

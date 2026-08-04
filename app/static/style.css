@@ -212,3 +212,66 @@ button.danger { color: #c0392b; border-color: #e57373; }
   padding: 40px 20px;
   color: var(--muted);
 }
+
+.row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.massnahme-row {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+  background: #fafbfc;
+}
+.mn-optionen { align-items: center; margin-top: 4px; }
+.mn-optionen .mn-remove { flex: 0 0 auto; margin-left: auto; }
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  flex: 1;
+  min-width: 200px;
+}
+.checkbox-label input { width: auto; }
+
+.ergebnis-block { margin-bottom: 18px; }
+.ergebnis-massnahme {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 0;
+}
+.ergebnis-massnahme:last-of-type { border-bottom: none; }
+.ergebnis-massnahme-head {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+}
+.rechenweg {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.ergebnis-summe-zeile {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+.ergebnis-summe-zeile.total {
+  font-weight: 700;
+  color: var(--dark);
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  padding-top: 10px;
+}
+.ergebnis-summe-zeile.gesamt {
+  font-size: 20px;
+  color: var(--accent);
+}
+.regime-badge { background: var(--ok-bg); border-color: var(--ok-border); color: #2e7d32; }
