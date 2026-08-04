@@ -26,6 +26,7 @@ from pydantic import BaseModel
 from . import settings_store
 from .calc.engine import berechne
 from .calc.models import CalcInput
+from .pdf_export import generate_pdf
 from .settings_store import (
     delete_logo,
     ensure_bootstrap,
@@ -70,6 +71,22 @@ def post_calc(req: CalcInput) -> dict[str, Any]:
     except Exception as exc:
         log.exception("Berechnung fehlgeschlagen")
         raise HTTPException(400, f"Berechnung fehlgeschlagen: {exc}") from exc
+
+
+@app.post("/api/pdf/export")
+def post_pdf_export(req: CalcInput) -> Response:
+    try:
+        result = berechne(req)
+        p = logo_path()
+        logo_bytes = p.read_bytes() if p else None
+        pdf_bytes = generate_pdf(result, load_settings(), logo_bytes)
+    except Exception as exc:
+        log.exception("PDF-Export fehlgeschlagen")
+        raise HTTPException(400, f"PDF-Export fehlgeschlagen: {exc}") from exc
+    return Response(
+        content=pdf_bytes, media_type="application/pdf",
+        headers={"Content-Disposition": 'inline; filename="Foerderberechnung.pdf"'},
+    )
 
 
 # ---------- Settings ----------

@@ -299,6 +299,34 @@ function renderHeizungBlock(block) {
   `;
 }
 
+let lastPayload = null;
+
+async function exportPdf() {
+  if (!lastPayload) return;
+  const btn = $("btn-pdf-export");
+  btn.disabled = true;
+  btn.textContent = "PDF wird erstellt…";
+  try {
+    const res = await fetch("/api/pdf/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(lastPayload),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "PDF-Export fehlgeschlagen");
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  } catch (e) {
+    toast(`Fehler: ${e.message}`, "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "PDF exportieren";
+  }
+}
+
 $("btn-berechnen").addEventListener("click", async () => {
   const zveVal = parseFloat($("zve").value);
   const payload = {
@@ -339,6 +367,7 @@ $("btn-berechnen").addEventListener("click", async () => {
     return;
   }
 
+  lastPayload = payload;
   const btn = $("btn-berechnen");
   btn.disabled = true;
   btn.textContent = "Berechne…";
@@ -371,10 +400,14 @@ $("btn-berechnen").addEventListener("click", async () => {
             <span>Gesamtvorteil inkl. Steuerbonus</span><span>${euro(data.gesamtvorteil_inkl_steuerbonus)}</span>
           </div>
         ` : ""}
+        <div class="row" style="margin-top:16px;">
+          <button id="btn-pdf-export" class="secondary" type="button">PDF exportieren</button>
+        </div>
       </section>
     `;
     $("ergebnis").innerHTML = html;
     $("ergebnis").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("btn-pdf-export").addEventListener("click", exportPdf);
   } catch (e) {
     toast(`Fehler: ${e.message}`, "error");
   } finally {
