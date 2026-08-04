@@ -97,6 +97,17 @@ class SystemischeSanierung(BaseModel):
     fachplanung_kosten: float = 0.0
 
 
+class Kunde(BaseModel):
+    """Rein informativ (Anzeige/PDF) — fließt in keine Förderberechnung ein.
+    Kann manuell erfasst oder aus HERO übernommen werden (hero_ref = Projekt-
+    Referenz/display_id, falls aus HERO importiert)."""
+    name: str = ""
+    strasse: str = ""
+    plz: str = ""
+    ort: str = ""
+    hero_ref: str = ""
+
+
 class CalcInput(BaseModel):
     regime: Regime = Regime.AUTO
     antragsdatum: date
@@ -105,3 +116,4 @@ class CalcInput(BaseModel):
     em_massnahmen: list[EMMassnahme] = []
     heizung_massnahmen: list[HeizungMassnahme] = []
     systemische_sanierung: SystemischeSanierung | None = None
+    kunde: Kunde | None = None

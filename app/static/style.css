@@ -295,6 +295,25 @@ table.jahresstaffel th, table.jahresstaffel td {
 }
 table.jahresstaffel th { color: var(--muted); font-weight: 600; }
 
+.hero-results {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin: -8px 0 14px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--card);
+}
+.hero-result-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hero-result-item:last-child { border-bottom: none; }
+.hero-result-item:hover { background: var(--bg); }
+
 .hint {
   font-size: 14px;
   color: var(--muted);

@@ -211,6 +211,88 @@ function renderMassnahmenBlock(titel, block) {
   `;
 }
 
+// ---------- HERO-Kundensuche (optional, nur wenn konfiguriert) ----------
+
+let heroPlz = "";
+let heroOrt = "";
+let heroRef = "";
+let heroSearchTimer = null;
+
+async function initHeroSearch() {
+  try {
+    const res = await fetch("/api/hero/status");
+    const data = await res.json();
+    if (!data.configured) return;
+    $("hero-search-wrap").classList.remove("hidden");
+  } catch (e) {
+    // HERO-Status nicht abrufbar -> Suche bleibt ausgeblendet
+  }
+}
+
+function renderHeroResults(results) {
+  const el = $("hero-results");
+  if (!results.length) {
+    el.innerHTML = `<div class="hero-result-item muted small">Keine Treffer.</div>`;
+    el.classList.remove("hidden");
+    return;
+  }
+  el.innerHTML = results.map((r, i) => `
+    <div class="hero-result-item" data-idx="${i}">
+      <strong>${r.kunde || "(ohne Name)"}</strong>
+      <span class="muted small">${[r.strasse, r.plz, r.ort].filter(Boolean).join(" · ")} — ${r.measure || ""} (${r.status || ""}) · HERO ${r.hero_ref}</span>
+    </div>
+  `).join("");
+  el.classList.remove("hidden");
+  el.querySelectorAll(".hero-result-item[data-idx]").forEach(item => {
+    item.addEventListener("click", () => {
+      const r = results[parseInt(item.dataset.idx, 10)];
+      $("kunde-name").value = r.kunde || "";
+      $("kunde-strasse").value = r.strasse || "";
+      $("kunde-ort").value = [r.plz, r.ort].filter(Boolean).join(" ");
+      heroPlz = r.plz || "";
+      heroOrt = r.ort || "";
+      heroRef = r.hero_ref || "";
+      el.classList.add("hidden");
+      $("hero-search").value = "";
+    });
+  });
+}
+
+$("hero-search").addEventListener("input", () => {
+  clearTimeout(heroSearchTimer);
+  const q = $("hero-search").value.trim();
+  if (q.length < 2) {
+    $("hero-results").classList.add("hidden");
+    return;
+  }
+  heroSearchTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`/api/hero/projects?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Fehler");
+      renderHeroResults(data.results || []);
+    } catch (e) {
+      toast(`HERO-Suche fehlgeschlagen: ${e.message}`, "error");
+    }
+  }, 350);
+});
+
+initHeroSearch();
+
+function sammleKunde() {
+  const name = $("kunde-name").value.trim();
+  const strasse = $("kunde-strasse").value.trim();
+  const ortFeld = $("kunde-ort").value.trim();
+  if (!name && !strasse && !ortFeld) return null;
+  // "PLZ Ort" grob trennen, falls nicht per HERO-Klick übernommen
+  let plz = heroPlz, ort = heroOrt;
+  if (!plz && !ort && ortFeld) {
+    const m = ortFeld.match(/^(\d{4,5})\s+(.+)$/);
+    if (m) { plz = m[1]; ort = m[2]; } else { ort = ortFeld; }
+  }
+  return { name, strasse, plz, ort, hero_ref: heroRef };
+}
+
 $("systemisch-aktiv").addEventListener("change", () => {
   $("systemisch-felder").classList.toggle("hidden", !$("systemisch-aktiv").checked);
 });
@@ -389,6 +471,7 @@ $("btn-berechnen").addEventListener("click", async () => {
     em_massnahmen: sammleMassnahmen(),
     heizung_massnahmen: sammleHeizungMassnahmen(),
     systemische_sanierung: null,
+    kunde: sammleKunde(),
   };
 
   if ($("systemisch-aktiv").checked) {

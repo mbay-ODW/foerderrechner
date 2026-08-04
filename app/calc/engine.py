@@ -107,6 +107,7 @@ def berechne(calc_input: CalcInput) -> dict:
     return {
         "regime": regime.value,
         "warnungen": warnungen,
+        "kunde": calc_input.kunde.model_dump() if calc_input.kunde else None,
         "beg_systemisch": systemisch_ergebnis,
         "beg_heizung": {
             "massnahmen": heizung_ergebnisse,

@@ -3,3 +3,4 @@ uvicorn[standard]==0.32.0
 python-multipart==0.0.18
 pydantic==2.9.2
 reportlab==4.2.5
+httpx==0.27.2

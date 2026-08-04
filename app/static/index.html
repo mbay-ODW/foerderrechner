@@ -27,6 +27,31 @@
 
     <div id="app-root">
       <section class="card">
+        <h2>Kunde</h2>
+        <div id="hero-search-wrap" class="hidden">
+          <label>
+            <span>Aus HERO suchen</span>
+            <input id="hero-search" type="text" placeholder="Name, Ort, Projekt-Nr. …" autocomplete="off" />
+          </label>
+          <div id="hero-results" class="hero-results hidden"></div>
+        </div>
+        <div class="row-3">
+          <label>
+            <span>Name</span>
+            <input id="kunde-name" type="text" placeholder="Vorname Nachname" />
+          </label>
+          <label>
+            <span>Straße</span>
+            <input id="kunde-strasse" type="text" />
+          </label>
+          <label>
+            <span>PLZ / Ort</span>
+            <input id="kunde-ort" type="text" placeholder="12345 Musterstadt" />
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
         <h2>Projekt</h2>
         <div class="row-3">
           <label>

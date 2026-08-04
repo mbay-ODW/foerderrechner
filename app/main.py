@@ -23,7 +23,7 @@ from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import settings_store
+from . import hero_client, settings_store
 from .calc.engine import berechne
 from .calc.kfw_nebenprogramme import (
     altersgerecht_umbauen,
@@ -94,6 +94,26 @@ def post_pdf_export(req: CalcInput) -> Response:
         content=pdf_bytes, media_type="application/pdf",
         headers={"Content-Disposition": 'inline; filename="Foerderberechnung.pdf"'},
     )
+
+
+# ---------- HERO-Stammdaten-Suche (read-only, optional) ----------
+
+
+@app.get("/api/hero/status")
+def get_hero_status() -> dict[str, Any]:
+    return {"configured": hero_client.configured()}
+
+
+@app.get("/api/hero/projects")
+async def get_hero_projects(q: str = "") -> dict[str, Any]:
+    if not hero_client.configured():
+        raise HTTPException(400, "HERO ist nicht konfiguriert (HERO_TOKEN fehlt).")
+    try:
+        results = await hero_client.search_projects(q)
+    except Exception as exc:
+        log.exception("HERO-Suche fehlgeschlagen")
+        raise HTTPException(502, f"HERO-Suche fehlgeschlagen: {exc}") from exc
+    return {"results": results}
 
 
 # ---------- Beta: KfW-Nebenprogramme + iSFP-Erstellungsförderung ----------

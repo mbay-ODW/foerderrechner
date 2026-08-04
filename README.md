@@ -24,6 +24,8 @@ Live unter `https://forderrechner.bay-ram.de` (Authelia-geschützt). Fertig:
 - Beta: KfW-Nebenprogramme (Jung kauft Alt, Wohneigentumsprogramm, Altersgerecht
   Umbauen, Gewerbe zu Wohnen) + iSFP-Erstellungsförderung — **nicht** durch die
   Skill-Referenzen abgesichert, klar als unverifiziert gekennzeichnet
+- HERO-Kundensuche (optional, analog Wärmebrücken-Tool): Kunde/Adresse per
+  Live-Suche aus HERO übernehmen statt manuell einzutippen
 
 Alle skill-gestützten Module (BEG EM/Heizung/systemisch, §35c) sind gegen die
 Rechenbeispiele aus `beg-em-foerderung/references/*.md` per Unit-Test verifiziert
@@ -42,29 +44,40 @@ Läuft auf `http://localhost:8010`.
 Produktivvariante mit Traefik + Authelia: `docker-compose.yml`, Domain
 `forderrechner.bay-ram.de`, Portainer-Stack 58 auf TrueNAS (env 1).
 
-**GHCR-Image-Pull funktioniert aktuell nicht:** das GitHub-Actions-Workflow
-pusht zwar nach `ghcr.io/mbay-odw/foerderrechner:latest`, das Package ist aber
-privat, und die Sichtbarkeit lässt sich nicht per API umstellen (GitHub gibt
-404 zurück — bekanntes Gotcha, siehe `abnahme-service`, dessen Package manuell
-über die GitHub-Weboberfläche auf public gestellt wurde). Bis das für dieses
-Repo ebenso manuell erledigt ist (Package-Settings → Change visibility →
-Public), läuft der deployte Stack auf einem **lokal auf dem Host gebauten
-Image** (`foerderrechner:latest`, kein Registry-Pfad):
+**GHCR-Package ist public** (Package-Settings → Change visibility, manuell
+umgestellt), `docker pull ghcr.io/mbay-odw/foerderrechner:latest` funktioniert
+also grundsätzlich. Der aktuell deployte Stack läuft aber weiterhin auf einem
+**lokal auf dem TrueNAS-Host gebauten Image** (`foerderrechner:latest`, kein
+Registry-Pfad) — der lokale Build-Workflow ist unverändert der schnellste Weg
+für Redeploys ohne CI-Wartezeit:
 
 ```bash
 # Build-Kontext auf den Host kopieren (Port 5022)
-tar --exclude='.git' --exclude='data' -czf /tmp/build.tar.gz .
+tar --exclude='.git' --exclude='data' --exclude='.venv' --exclude='tests' \
+  --exclude='.pytest_cache' -czf /tmp/build.tar.gz .
 scp -i ~/.ssh/id_ed25519_truenas -P 5022 /tmp/build.tar.gz \
-  truenas_admin@10.0.1.14:/home/truenas_admin/foerderrechner-build/build.tar.gz
+  truenas_admin@10.0.1.14:/home/truenas_admin/build.tar.gz
 
 # Auf dem Host: entpacken + bauen (truenas_admin hat sudo docker, aber keinen
 # direkten Socket-Zugriff)
 ssh -i ~/.ssh/id_ed25519_truenas -p 5022 truenas_admin@10.0.1.14 \
-  'cd foerderrechner-build && tar xzf build.tar.gz && sudo docker build -t foerderrechner:latest .'
+  'rm -rf foerderrechner-build && mkdir foerderrechner-build && cd foerderrechner-build \
+   && tar xzf ../build.tar.gz && rm ../build.tar.gz && sudo docker build -t foerderrechner:latest .'
 
 # Stack redeployen (Portainer-Token liegt im portainer-mcp-Container, siehe
 # reference_portainer_redeploy-Memory): PUT /api/stacks/58?endpointId=1
+# mit stackFileContent aus GET /api/stacks/58/file + env aus GET /api/stacks/58
 ```
+
+### HERO-Kundensuche
+
+Optional, nur aktiv wenn `HERO_TOKEN` als Stack-Env gesetzt ist (identischer
+API-Key wie `hero-mcp-server`, host-seitig aus dessen Container-Env gelesen —
+Token nie im Klartext committen/loggen). Ohne Token bleibt die Suche in der UI
+ausgeblendet, manuelle Kundenerfassung funktioniert immer. Env:
+
+- `HERO_URL` — GraphQL-Endpoint, Default = offizieller HERO-Endpoint
+- `HERO_TOKEN` — API-Key mit Lesezugriff auf `project_matches`
 
 ## Datenpersistenz
 

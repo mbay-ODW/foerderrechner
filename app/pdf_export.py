@@ -109,6 +109,16 @@ def generate_pdf(
         styles["Sub"],
     ))
 
+    kunde = calc_result.get("kunde")
+    if kunde and (kunde.get("name") or kunde.get("strasse")):
+        adresse = ", ".join(
+            t for t in [kunde.get("strasse"), f"{kunde.get('plz', '')} {kunde.get('ort', '')}".strip()] if t
+        )
+        kunde_zeile = " · ".join(t for t in [kunde.get("name"), adresse] if t)
+        if kunde.get("hero_ref"):
+            kunde_zeile += f" (HERO {kunde['hero_ref']})"
+        story.append(Paragraph(f"Kunde: {kunde_zeile}", styles["Sub"]))
+
     for warnung in calc_result.get("warnungen", []):
         story.append(Paragraph(f"⚠ {warnung}", styles["Sub"]))
 
