@@ -1,0 +1,32 @@
+services:
+  foerderrechner:
+    image: ghcr.io/mbay-odw/foerderrechner:latest
+    container_name: foerderrechner
+    hostname: foerderrechner
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - TZ=Europe/Berlin
+      - DATA_DIR=/data
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - /mnt/apps/foerderrechner/data:/data:rw
+    networks:
+      - default
+      - traefik
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik
+      - traefik.http.routers.foerderrechner.rule=Host(`forderrechner.bay-ram.de`)
+      - traefik.http.routers.foerderrechner.entrypoints=websecure
+      - traefik.http.routers.foerderrechner.tls=true
+      - traefik.http.routers.foerderrechner.tls.certresolver=mydnschallenge
+      - traefik.http.routers.foerderrechner.middlewares=middlewares-rate-limit@file,middlewares-authelia@file,middlewares-secure-headers@file
+      - traefik.http.services.foerderrechner.loadbalancer.server.port=8000
+
+networks:
+  default:
+    driver: bridge
+  traefik:
+    external: true

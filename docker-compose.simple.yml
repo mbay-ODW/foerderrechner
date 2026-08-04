@@ -1,0 +1,12 @@
+services:
+  foerderrechner:
+    build: .
+    container_name: foerderrechner
+    restart: unless-stopped
+    ports:
+      - "8010:8000"
+    volumes:
+      - ./data:/data
+    environment:
+      - TZ=Europe/Berlin
+      - LOG_LEVEL=INFO
