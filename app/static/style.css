@@ -275,3 +275,9 @@ button.danger { color: #c0392b; border-color: #e57373; }
   color: var(--accent);
 }
 .regime-badge { background: var(--ok-bg); border-color: var(--ok-border); color: #2e7d32; }
+
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 18px 0;
+}

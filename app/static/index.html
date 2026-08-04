@@ -59,6 +59,16 @@
             <input id="nwg-flaeche" type="number" min="0" value="0" />
           </label>
         </div>
+        <hr class="section-divider" />
+        <h2>Antragsteller</h2>
+        <div class="row-3">
+          <label class="checkbox-label"><input type="checkbox" id="selbstnutzer" checked /> Selbstnutzer</label>
+          <label>
+            <span>zu verst. Haushaltseinkommen (€/Jahr)</span>
+            <input id="zve" type="number" min="0" placeholder="optional" />
+          </label>
+          <label class="checkbox-label"><input type="checkbox" id="kind-minderjaehrig" /> mind. 1 minderjähriges Kind (Familienzuschlag)</label>
+        </div>
       </section>
 
       <section class="card">
@@ -69,6 +79,17 @@
         <div id="massnahmen-liste"></div>
         <div class="row">
           <button id="btn-add-massnahme" class="secondary" type="button">+ Maßnahme hinzufügen</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="row-header">
+          <h2>Heizungsförderung</h2>
+        </div>
+        <p class="muted small">Grundförderung, Klimageschwindigkeits-/Einkommensbonus, EU-Wertschöpfungsbonus (ab Quartal 1 2027).</p>
+        <div id="heizung-liste"></div>
+        <div class="row">
+          <button id="btn-add-heizung" class="secondary" type="button">+ Heizungsmaßnahme hinzufügen</button>
         </div>
       </section>
 

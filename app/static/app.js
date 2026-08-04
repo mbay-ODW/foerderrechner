@@ -71,6 +71,72 @@ function addMassnahmeRow(prefill = {}) {
 
 $("btn-add-massnahme").addEventListener("click", () => addMassnahmeRow());
 
+const WAERMEQUELLEN = [
+  { value: "sonstige_ee", label: "Sonstige EE-Heizung (Biomasse, Solarthermie, …)" },
+  { value: "wp_eu", label: "Wärmepumpe — EU-Ursprung" },
+  { value: "wp_nicht_eu", label: "Wärmepumpe — Nicht-EU-Ursprung" },
+  { value: "biomasse", label: "Biomasse (ALT: Emissionsminderungszuschlag)" },
+];
+
+let heizungCounter = 0;
+
+function addHeizungRow() {
+  const id = `hz-${heizungCounter++}`;
+  const wrap = document.createElement("div");
+  wrap.className = "massnahme-row";
+  wrap.dataset.id = id;
+  wrap.innerHTML = `
+    <div class="row-3">
+      <label>
+        <span>Bezeichnung</span>
+        <input class="hz-bezeichnung" type="text" placeholder="z. B. Wärmepumpe Luft/Wasser" />
+      </label>
+      <label>
+        <span>Förderfähige Kosten (€)</span>
+        <input class="hz-kosten" type="number" min="0" step="0.01" />
+      </label>
+      <label>
+        <span>Wärmequelle</span>
+        <select class="hz-waermequelle">
+          ${WAERMEQUELLEN.map(w => `<option value="${w.value}">${w.label}</option>`).join("")}
+        </select>
+      </label>
+    </div>
+    <div class="row mn-optionen">
+      <label class="checkbox-label"><input type="checkbox" class="hz-kgb1" /> Ersatz funktionst. Öl/Kohle/Gasetagen/Nachtspeicher</label>
+      <label class="checkbox-label"><input type="checkbox" class="hz-kgb2" /> Ersatz Gas-/Biomasseheizung ≥ 20 Jahre</label>
+      <button class="secondary small danger hz-remove" type="button">Entfernen</button>
+    </div>
+    <div class="row mn-optionen">
+      <label class="checkbox-label"><input type="checkbox" class="hz-ee-ab-2008" /> Gebäude hat bereits EE-Anlage ab Bj. 2008 (NEU, ab Q1/2027: Ausschluss)</label>
+      <label class="checkbox-label"><input type="checkbox" class="hz-ee-vor-2008" /> Ersatz EE-Anlage vor 2008 (NEU, ab Q1/2027: nur 25% förderfähig)</label>
+    </div>
+  `;
+  $("heizung-liste").appendChild(wrap);
+  wrap.querySelector(".hz-remove").addEventListener("click", () => wrap.remove());
+}
+
+$("btn-add-heizung").addEventListener("click", () => addHeizungRow());
+
+function sammleHeizungMassnahmen() {
+  const rows = document.querySelectorAll("#heizung-liste .massnahme-row");
+  const massnahmen = [];
+  for (const row of rows) {
+    const kosten = parseFloat(row.querySelector(".hz-kosten").value);
+    if (!kosten || kosten <= 0) continue;
+    massnahmen.push({
+      bezeichnung: row.querySelector(".hz-bezeichnung").value || "",
+      kosten,
+      waermequelle: row.querySelector(".hz-waermequelle").value,
+      ersatz_funktionstuechtige_oel_kohle_gasetagen_nachtspeicher: row.querySelector(".hz-kgb1").checked,
+      ersatz_gas_biomasse_ab_20_jahre: row.querySelector(".hz-kgb2").checked,
+      ersatz_ee_anlage_baujahr_ab_2008: row.querySelector(".hz-ee-ab-2008").checked,
+      ersatz_ee_anlage_vor_2008: row.querySelector(".hz-ee-vor-2008").checked,
+    });
+  }
+  return massnahmen;
+}
+
 // Gebäudetyp-abhängige Felder
 $("gebaeude-typ").addEventListener("change", () => {
   const isNwg = $("gebaeude-typ").value === "NWG";
@@ -137,7 +203,43 @@ function renderMassnahmenBlock(titel, block) {
   `;
 }
 
+function renderHeizungBlock(block) {
+  if (!block.massnahmen.length) return "";
+  const rows = block.massnahmen.map(m => `
+    <div class="ergebnis-massnahme">
+      <div class="ergebnis-massnahme-head">
+        <strong>${m.bezeichnung || "Heizung"}</strong>
+        <span>${euro(m.betrag)}</span>
+      </div>
+      ${m.ausgeschlossen
+        ? `<div class="muted small">Nicht förderfähig</div>`
+        : `<div class="muted small">Satz: ${(m.satz_prozentual * 100).toFixed(1)} %
+             ${m.zuschlag_pauschal ? ` + ${euro(m.zuschlag_pauschal)} Pauschale` : ""}
+             · Förderfähige Kosten: ${euro(m.foerderfaehige_kosten)}</div>`}
+      <ul class="rechenweg">${m.rechenweg.map(r => `<li>${r}</li>`).join("")}</ul>
+    </div>
+  `).join("");
+
+  return `
+    <div class="ergebnis-block">
+      <h3>Heizungsförderung</h3>
+      ${rows}
+      <div class="ergebnis-summe-zeile">
+        <span>Förderfähige Kosten gesamt</span><span>${euro(block.foerderfaehige_kosten_summe)}</span>
+      </div>
+      <div class="ergebnis-summe-zeile muted small">
+        <span>Höchstgrenze (${block.hoechstgrenze_erklaerung})</span><span>${euro(block.hoechstgrenze)}</span>
+      </div>
+      ${block.gedeckelt ? `<div class="badge">Gedeckelt</div>` : ""}
+      <div class="ergebnis-summe-zeile total">
+        <span>Zuschuss</span><span>${euro(block.zuschuss)}</span>
+      </div>
+    </div>
+  `;
+}
+
 $("btn-berechnen").addEventListener("click", async () => {
+  const zveVal = parseFloat($("zve").value);
   const payload = {
     regime: $("regime").value,
     antragsdatum: $("antragsdatum").value || heute(),
@@ -146,12 +248,16 @@ $("btn-berechnen").addEventListener("click", async () => {
       anzahl_we: parseInt($("anzahl-we").value, 10) || 1,
       nwg_flaeche_m2: parseFloat($("nwg-flaeche").value) || null,
     },
-    antragsteller: { selbstnutzer: true },
+    antragsteller: {
+      selbstnutzer: $("selbstnutzer").checked,
+      zve: Number.isFinite(zveVal) ? zveVal : null,
+      kind_minderjaehrig: $("kind-minderjaehrig").checked,
+    },
     em_massnahmen: sammleMassnahmen(),
-    heizung_massnahmen: [],
+    heizung_massnahmen: sammleHeizungMassnahmen(),
   };
 
-  if (!payload.em_massnahmen.length) {
+  if (!payload.em_massnahmen.length && !payload.heizung_massnahmen.length) {
     toast("Bitte mindestens eine Maßnahme mit Kosten eingeben.", "error");
     return;
   }
@@ -176,6 +282,7 @@ $("btn-berechnen").addEventListener("click", async () => {
         </div>
         ${renderMassnahmenBlock("BEG-Einzelmaßnahmen", data.beg_em)}
         ${renderMassnahmenBlock("Fachplanung & Baubegleitung", data.fachplanung)}
+        ${renderHeizungBlock(data.beg_heizung)}
         <div class="ergebnis-summe-zeile total gesamt">
           <span>Zuschuss gesamt</span><span>${euro(data.zuschuss_gesamt)}</span>
         </div>

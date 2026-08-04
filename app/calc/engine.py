@@ -12,6 +12,7 @@ from .beg_em import (
     hoechstgrenze_em,
     hoechstgrenze_fachplanung,
 )
+from .beg_heizung import berechne_heizung_massnahme, hoechstbetrag_heizung_gesamt
 from .models import CalcInput, EMKategorie
 from .regime import bestimme_regime
 
@@ -61,8 +62,38 @@ def berechne(calc_input: CalcInput) -> dict:
         fp_kappungsfaktor = 1.0
         fachplanung_summe_zuschuss = fachplanung_summe_zuschuss_ungedeckelt
 
+    heizung_ergebnisse = [
+        berechne_heizung_massnahme(
+            m, regime, calc_input.antragsdatum,
+            zve=calc_input.antragsteller.zve,
+            selbstnutzer=calc_input.antragsteller.selbstnutzer,
+            familienzuschlag=calc_input.antragsteller.kind_minderjaehrig,
+        )
+        for m in calc_input.heizung_massnahmen
+    ]
+    heizung_foerderfaehig_summe = sum(e["foerderfaehige_kosten"] for e in heizung_ergebnisse)
+    heizung_zuschuss_ungedeckelt = sum(e["betrag"] for e in heizung_ergebnisse)
+    grenze_heizung, grenze_heizung_erklaerung = hoechstbetrag_heizung_gesamt(
+        calc_input.gebaeude, regime, calc_input.antragsdatum
+    )
+    heizung_gedeckelt = heizung_foerderfaehig_summe > grenze_heizung
+    if heizung_gedeckelt and heizung_foerderfaehig_summe > 0:
+        heizung_kappungsfaktor = grenze_heizung / heizung_foerderfaehig_summe
+        heizung_zuschuss = heizung_zuschuss_ungedeckelt * heizung_kappungsfaktor
+    else:
+        heizung_zuschuss = heizung_zuschuss_ungedeckelt
+
     return {
         "regime": regime.value,
+        "beg_heizung": {
+            "massnahmen": heizung_ergebnisse,
+            "foerderfaehige_kosten_summe": round(heizung_foerderfaehig_summe, 2),
+            "zuschuss_ungedeckelt": round(heizung_zuschuss_ungedeckelt, 2),
+            "hoechstgrenze": round(grenze_heizung, 2),
+            "hoechstgrenze_erklaerung": grenze_heizung_erklaerung,
+            "gedeckelt": heizung_gedeckelt,
+            "zuschuss": round(heizung_zuschuss, 2),
+        },
         "beg_em": {
             "massnahmen": [m.to_dict() for m in em_ergebnisse],
             "foerderfaehige_kosten_summe": round(em_summe_foerderfaehig, 2),
@@ -81,5 +112,7 @@ def berechne(calc_input: CalcInput) -> dict:
             "gedeckelt": fachplanung_gedeckelt,
             "zuschuss": round(fachplanung_summe_zuschuss, 2),
         },
-        "zuschuss_gesamt": round(em_summe_zuschuss + fachplanung_summe_zuschuss, 2),
+        "zuschuss_gesamt": round(
+            em_summe_zuschuss + fachplanung_summe_zuschuss + heizung_zuschuss, 2
+        ),
     }
