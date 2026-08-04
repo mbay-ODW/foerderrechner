@@ -1,6 +1,18 @@
 """FastAPI service for den BEG-EM-/gModG-Förderrechner.
 
 Endpoints:
+  POST   /api/calc              — Förderberechnung
+  POST   /api/pdf/export        — PDF-Export der Berechnung
+
+  GET    /api/konditionen       — aktuelle + Default-Konditionen (Sätze/Boni/Grenzen)
+  POST   /api/konditionen       — Konditionen speichern
+  POST   /api/konditionen/reset — auf Default zurücksetzen
+
+  GET    /api/hero/status       — HERO-Integration konfiguriert?
+  GET    /api/hero/projects     — HERO-Projekt-/Kundensuche
+
+  POST   /api/beta/nebenprogramme — KfW-Beta-Programme + iSFP-Erstellungsförderung
+
   GET    /api/settings         — Branding-Settings (Firma, Kontakt, Akzentfarbe)
   POST   /api/settings         — Settings patchen
   GET    /api/settings/logo    — gespeichertes Logo ausliefern
@@ -24,6 +36,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import hero_client, settings_store
+from .calc import konditionen_store
 from .calc.engine import berechne
 from .calc.kfw_nebenprogramme import (
     altersgerecht_umbauen,
@@ -51,6 +64,7 @@ logging.basicConfig(
 log = logging.getLogger("foerderrechner")
 
 ensure_bootstrap()
+konditionen_store.ensure_bootstrap()
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -128,15 +142,45 @@ class BetaRequest(BaseModel):
 
 @app.post("/api/beta/nebenprogramme")
 def post_beta_nebenprogramme(req: BetaRequest) -> dict[str, Any]:
+    k = konditionen_store.load_konditionen()
     ergebnisse = [
-        jung_kauft_alt(req.anzahl_kinder, req.zve_haushalt),
-        wohneigentumsprogramm(),
-        altersgerecht_umbauen(req.anzahl_we),
+        jung_kauft_alt(req.anzahl_kinder, req.zve_haushalt, k),
+        wohneigentumsprogramm(k),
+        altersgerecht_umbauen(req.anzahl_we, k),
         gewerbe_zu_wohnen(),
     ]
     if req.isfp_kosten:
-        ergebnisse.append(isfp_erstellungsfoerderung(req.isfp_kosten, req.anzahl_we))
+        ergebnisse.append(isfp_erstellungsfoerderung(req.isfp_kosten, req.anzahl_we, k))
     return {"programme": ergebnisse}
+
+
+# ---------- Konditionen (editierbare Fördersätze/Boni/Höchstgrenzen/Stichtage) ----------
+
+
+class KonditionenSave(BaseModel):
+    konditionen: dict[str, Any]
+
+
+@app.get("/api/konditionen")
+def get_konditionen() -> dict[str, Any]:
+    return {
+        "current": konditionen_store.load_konditionen(),
+        "default": konditionen_store.DEFAULT_KONDITIONEN,
+    }
+
+
+@app.post("/api/konditionen")
+def post_konditionen(req: KonditionenSave) -> dict[str, Any]:
+    try:
+        saved = konditionen_store.save_konditionen(req.konditionen)
+    except Exception as exc:
+        raise HTTPException(400, f"Konditionen ungültig: {exc}") from exc
+    return {"ok": True, "current": saved}
+
+
+@app.post("/api/konditionen/reset")
+def post_konditionen_reset() -> dict[str, Any]:
+    return {"ok": True, "current": konditionen_store.reset_konditionen()}
 
 
 # ---------- Settings ----------

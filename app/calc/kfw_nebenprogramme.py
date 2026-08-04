@@ -5,38 +5,31 @@ diese Werte NICHT aus einer geladenen, stand-verifizierten Skill-Referenz
 übernommen — für Jung kauft Alt, Wohneigentumsprogramm, Altersgerecht
 Umbauen, Gewerbe zu Wohnen und die iSFP-Erstellungsförderung existiert keine
 entsprechende Referenz in `beg-em-foerderung`/`gebaeudeenergierecht`. Die
-Zahlen hier sind Best-Effort-Strukturdaten (Kreditobergrenzen, grobe Sätze)
-— vor jeder Kundenberatung MUSS das aktuelle KfW-/BAFA-Merkblatt geprüft
-werden. Jedes Ergebnis trägt deshalb `verifiziert: False` und einen
-Prüfhinweis; die UI zeigt das als Beta-Badge.
+Zahlen hier sind Best-Effort-Strukturdaten (Kreditobergrenzen, grobe Sätze,
+im Settings-Tab „Konditionen" editierbar) — vor jeder Kundenberatung MUSS das
+aktuelle KfW-/BAFA-Merkblatt geprüft werden. Jedes Ergebnis trägt deshalb
+`verifiziert: False` und einen Prüfhinweis; die UI zeigt das als Beta-Badge.
 """
 
 from __future__ import annotations
+
+from .konditionen_store import DEFAULT_KONDITIONEN
 
 PRUEFHINWEIS = (
     "Beta — Konditionen nicht durch die geladenen Skill-Referenzen "
     "abgesichert. Vor Kundenberatung aktuelles KfW-/BAFA-Merkblatt prüfen."
 )
 
-JUNG_KAUFT_ALT_KREDIT_JE_KINDERZAHL = {1: 100_000, 2: 150_000, 3: 200_000}
-JUNG_KAUFT_ALT_EINKOMMENSGRENZE_BASIS = 90_000
-JUNG_KAUFT_ALT_EINKOMMENSGRENZE_JE_WEITERES_KIND = 10_000
 
-WOHNEIGENTUMSPROGRAMM_KREDIT_MAX = 100_000
-
-ALTERSGERECHT_UMBAUEN_KREDIT_MAX_JE_WE = 50_000
-
-ISFP_ZUSCHUSS_SATZ = 0.50
-ISFP_HOECHSTBETRAG_EFH_ZFH = 650.0
-ISFP_HOECHSTBETRAG_MFH_AB_3_WE = 1_300.0
-
-
-def jung_kauft_alt(anzahl_kinder: int, zve_haushalt: float | None) -> dict:
+def jung_kauft_alt(
+    anzahl_kinder: int, zve_haushalt: float | None, k: dict = DEFAULT_KONDITIONEN,
+) -> dict:
+    kn = k["kfw_nebenprogramme"]
     kinder_gedeckelt = min(max(anzahl_kinder, 1), 3)
-    kredit = JUNG_KAUFT_ALT_KREDIT_JE_KINDERZAHL[kinder_gedeckelt]
-    einkommensgrenze = JUNG_KAUFT_ALT_EINKOMMENSGRENZE_BASIS + max(
+    kredit = kn["jung_kauft_alt_kredit_je_kinderzahl"][str(kinder_gedeckelt)]
+    einkommensgrenze = kn["jung_kauft_alt_einkommensgrenze_basis"] + max(
         0, anzahl_kinder - 1
-    ) * JUNG_KAUFT_ALT_EINKOMMENSGRENZE_JE_WEITERES_KIND
+    ) * kn["jung_kauft_alt_einkommensgrenze_je_weiteres_kind"]
 
     berechtigt = zve_haushalt is None or zve_haushalt <= einkommensgrenze
     return {
@@ -53,10 +46,10 @@ def jung_kauft_alt(anzahl_kinder: int, zve_haushalt: float | None) -> dict:
     }
 
 
-def wohneigentumsprogramm() -> dict:
+def wohneigentumsprogramm(k: dict = DEFAULT_KONDITIONEN) -> dict:
     return {
         "programm": "Wohneigentumsprogramm (KfW 124)",
-        "kredit_max": WOHNEIGENTUMSPROGRAMM_KREDIT_MAX,
+        "kredit_max": k["kfw_nebenprogramme"]["wohneigentumsprogramm_kredit_max"],
         "hinweis": (
             "Zinsgünstiger Kredit für Neubau/Ersterwerb selbstgenutzten "
             "Wohneigentums, ohne besondere energetische Vorgabe."
@@ -66,10 +59,11 @@ def wohneigentumsprogramm() -> dict:
     }
 
 
-def altersgerecht_umbauen(anzahl_we: int) -> dict:
+def altersgerecht_umbauen(anzahl_we: int, k: dict = DEFAULT_KONDITIONEN) -> dict:
+    je_we = k["kfw_nebenprogramme"]["altersgerecht_umbauen_kredit_max_je_we"]
     return {
         "programm": "Altersgerecht Umbauen (KfW 159)",
-        "kredit_max": ALTERSGERECHT_UMBAUEN_KREDIT_MAX_JE_WE * max(anzahl_we, 1),
+        "kredit_max": je_we * max(anzahl_we, 1),
         "hinweis": "Kredit zur Barrierereduzierung (Bad, Zugänge, Türbreiten etc.).",
         "verifiziert": False,
         "pruefhinweis": PRUEFHINWEIS,
@@ -90,15 +84,20 @@ def gewerbe_zu_wohnen() -> dict:
     }
 
 
-def isfp_erstellungsfoerderung(kosten: float, anzahl_we: int) -> dict:
+def isfp_erstellungsfoerderung(
+    kosten: float, anzahl_we: int, k: dict = DEFAULT_KONDITIONEN,
+) -> dict:
+    kn = k["kfw_nebenprogramme"]
+    satz = kn["isfp_zuschuss_satz"]
     hoechstbetrag = (
-        ISFP_HOECHSTBETRAG_MFH_AB_3_WE if anzahl_we >= 3 else ISFP_HOECHSTBETRAG_EFH_ZFH
+        kn["isfp_hoechstbetrag_mfh_ab_3_we"] if anzahl_we >= 3
+        else kn["isfp_hoechstbetrag_efh_zfh"]
     )
-    betrag = min(kosten * ISFP_ZUSCHUSS_SATZ, hoechstbetrag)
+    betrag = min(kosten * satz, hoechstbetrag)
     return {
         "programm": "iSFP-/Energieberatungs-Förderung (BAFA)",
         "kosten": kosten,
-        "satz": ISFP_ZUSCHUSS_SATZ,
+        "satz": satz,
         "hoechstbetrag": hoechstbetrag,
         "betrag": round(betrag, 2),
         "hinweis": "Zuschuss zur Erstellung des individuellen Sanierungsfahrplans selbst.",

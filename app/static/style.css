@@ -160,6 +160,44 @@ button.danger { color: #c0392b; border-color: #e57373; }
 .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 .tab-pane.hidden { display: none; }
 
+.code-editor {
+  width: 100%;
+  min-height: 420px;
+  padding: 14px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  resize: vertical;
+  background: #fafbfc;
+  color: var(--text);
+  tab-size: 2;
+}
+.code-editor:focus { outline: 2px solid var(--accent); border-color: transparent; }
+
+.diff {
+  background: #0e2a40;
+  color: #e3e6ec;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-x: auto;
+  margin: 10px 0;
+  white-space: pre-wrap;
+}
+
+.test-result {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.test-result.success { background: var(--ok-bg); border: 1px solid var(--ok-border); color: #2e7d32; }
+.test-result.error { background: var(--err-bg); border: 1px solid var(--err-border); color: #c0392b; }
+
 .upload-zone {
   border: 2px dashed var(--border);
   border-radius: 12px;

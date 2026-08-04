@@ -17,29 +17,26 @@ beantragt werden, teilen sich diesen einen Deckel.
 
 from __future__ import annotations
 
-SATZ_GESAMT = 0.20
-HOECHSTGRENZE_JE_OBJEKT = 40_000.0
-
-JAHRESSTAFFELUNG = [
-    (1, 0.07, 14_000.0),
-    (2, 0.07, 14_000.0),
-    (3, 0.06, 12_000.0),
-]
+from .konditionen_store import DEFAULT_KONDITIONEN
 
 
-def berechne_35c(kosten_summe: float) -> dict:
-    foerderfaehige_kosten = min(kosten_summe, HOECHSTGRENZE_JE_OBJEKT / SATZ_GESAMT)
+def berechne_35c(kosten_summe: float, k: dict = DEFAULT_KONDITIONEN) -> dict:
+    k35c = k["steuerbonus_35c"]
+    satz_gesamt = k35c["satz_gesamt"]
+    hoechstgrenze = k35c["hoechstgrenze_je_objekt"]
+
+    foerderfaehige_kosten = min(kosten_summe, hoechstgrenze / satz_gesamt)
     gedeckelt = kosten_summe > foerderfaehige_kosten
-    gesamtbetrag = foerderfaehige_kosten * SATZ_GESAMT
+    gesamtbetrag = foerderfaehige_kosten * satz_gesamt
 
     jahre = []
-    for jahr, satz, max_betrag in JAHRESSTAFFELUNG:
+    for jahr, satz, max_betrag in k35c["jahresstaffelung"]:
         betrag = min(foerderfaehige_kosten * satz, max_betrag)
         jahre.append({"jahr": jahr, "satz": satz, "betrag": round(betrag, 2)})
 
     rechenweg = [
-        f"§ 35c EStG: {SATZ_GESAMT:.0%} der Kosten über 3 Jahre, Deckel "
-        f"{HOECHSTGRENZE_JE_OBJEKT:,.0f} €/Objekt",
+        f"§ 35c EStG: {satz_gesamt:.0%} der Kosten über 3 Jahre, Deckel "
+        f"{hoechstgrenze:,.0f} €/Objekt",
     ]
     if gedeckelt:
         rechenweg.append(
@@ -54,7 +51,7 @@ def berechne_35c(kosten_summe: float) -> dict:
     return {
         "kosten_summe": round(kosten_summe, 2),
         "foerderfaehige_kosten": round(foerderfaehige_kosten, 2),
-        "hoechstgrenze": HOECHSTGRENZE_JE_OBJEKT,
+        "hoechstgrenze": hoechstgrenze,
         "gedeckelt": gedeckelt,
         "betrag_gesamt": round(gesamtbetrag, 2),
         "jahresstaffelung": jahre,

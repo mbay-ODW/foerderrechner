@@ -8,11 +8,11 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <main class="container">
+  <main class="container container-wide">
     <header class="page-header">
       <div>
         <h1>Einstellungen</h1>
-        <p class="sub">Branding für Oberfläche und PDF-Export.</p>
+        <p class="sub">Branding und Förderkonditionen.</p>
       </div>
       <a href="/" class="icon-btn" title="Zurück" aria-label="Zurück zum Rechner">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -22,53 +22,89 @@
       </a>
     </header>
 
-    <section class="card">
-      <h2>Firma & Kontakt</h2>
-      <p class="muted small">Erscheint im Header und in der Fußzeile des PDF-Exports.</p>
+    <nav class="tabs">
+      <button class="tab active" data-tab="general">Allgemein</button>
+      <button class="tab" data-tab="konditionen">Konditionen</button>
+    </nav>
 
-      <label>
-        <span>Firmenname</span>
-        <input id="firmenname" type="text" placeholder="Energieberatung Mustermann" />
-      </label>
-      <label>
-        <span>Adresse</span>
-        <input id="kontakt-adresse" type="text" placeholder="Musterstraße 1, 12345 Musterstadt" />
-      </label>
-      <div class="row-3">
-        <label>
-          <span>Telefon</span>
-          <input id="kontakt-telefon" type="text" placeholder="+49 …" />
-        </label>
-        <label>
-          <span>E-Mail</span>
-          <input id="kontakt-email" type="email" placeholder="info@…" />
-        </label>
-        <label>
-          <span>Akzentfarbe</span>
-          <input id="akzentfarbe" type="color" value="#0B6E7F" />
-        </label>
-      </div>
+    <!-- ============ Tab: Allgemein ============ -->
+    <section id="tab-general" class="tab-pane">
+      <section class="card">
+        <h2>Firma & Kontakt</h2>
+        <p class="muted small">Erscheint im Header und in der Fußzeile des PDF-Exports.</p>
 
-      <div class="row">
-        <button id="btn-save-general" class="primary">Speichern</button>
-      </div>
+        <label>
+          <span>Firmenname</span>
+          <input id="firmenname" type="text" placeholder="Energieberatung Mustermann" />
+        </label>
+        <label>
+          <span>Adresse</span>
+          <input id="kontakt-adresse" type="text" placeholder="Musterstraße 1, 12345 Musterstadt" />
+        </label>
+        <div class="row-3">
+          <label>
+            <span>Telefon</span>
+            <input id="kontakt-telefon" type="text" placeholder="+49 …" />
+          </label>
+          <label>
+            <span>E-Mail</span>
+            <input id="kontakt-email" type="email" placeholder="info@…" />
+          </label>
+          <label>
+            <span>Akzentfarbe</span>
+            <input id="akzentfarbe" type="color" value="#0B6E7F" />
+          </label>
+        </div>
+
+        <div class="row">
+          <button id="btn-save-general" class="primary">Speichern</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Logo</h2>
+        <p class="muted small">Wird im Header und im PDF-Export angezeigt. PNG, JPG, SVG oder WebP, max. 2 MB.</p>
+
+        <div id="logo-preview-wrap" class="logo-preview-wrap hidden">
+          <img id="logo-preview" src="" alt="Logo" class="logo-preview-img" />
+          <button id="btn-delete-logo" class="secondary small danger" type="button">Logo entfernen</button>
+        </div>
+
+        <div id="logo-upload-zone" class="upload-zone">
+          <input type="file" id="logo-file" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden />
+          <p><strong>Logo hier ablegen</strong> oder <span class="linklike" id="btn-pick-logo">Datei wählen</span></p>
+          <small class="muted">PNG · JPG · SVG · WebP — max. 2 MB</small>
+        </div>
+        <div id="logo-status" class="hidden" style="margin-top:8px;"></div>
+      </section>
     </section>
 
-    <section class="card">
-      <h2>Logo</h2>
-      <p class="muted small">Wird im Header und im PDF-Export angezeigt. PNG, JPG, SVG oder WebP, max. 2 MB.</p>
+    <!-- ============ Tab: Konditionen ============ -->
+    <section id="tab-konditionen" class="tab-pane hidden">
+      <section class="card">
+        <h2>Fördersätze, Boni, Höchstgrenzen, Stichtage</h2>
+        <p class="muted small">
+          Alle Zahlen, die in die Berechnung einfließen (BEG-Einzelmaßnahmen,
+          Heizungsförderung, systemische Sanierung, §35c, Beta-Nebenprogramme,
+          Regime-Stichtage), als JSON. Wirkt sofort auf die nächste Berechnung,
+          kein Neustart nötig. Struktur bewusst technisch — Feldnamen sind
+          selbsterklärend (z. B. <code>beg_heizung.grundfoerderung</code>),
+          Sätze als Dezimalzahl (0.15 = 15%).
+        </p>
 
-      <div id="logo-preview-wrap" class="logo-preview-wrap hidden">
-        <img id="logo-preview" src="" alt="Logo" class="logo-preview-img" />
-        <button id="btn-delete-logo" class="secondary small danger" type="button">Logo entfernen</button>
-      </div>
+        <div class="row" style="margin-bottom: 10px;">
+          <button id="btn-toggle-diff-kond" class="secondary small">Diff anzeigen</button>
+          <button id="btn-reset-kond" class="secondary small">Auf Original zurücksetzen</button>
+        </div>
 
-      <div id="logo-upload-zone" class="upload-zone">
-        <input type="file" id="logo-file" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden />
-        <p><strong>Logo hier ablegen</strong> oder <span class="linklike" id="btn-pick-logo">Datei wählen</span></p>
-        <small class="muted">PNG · JPG · SVG · WebP — max. 2 MB</small>
-      </div>
-      <div id="logo-status" class="hidden" style="margin-top:8px;"></div>
+        <textarea id="kond-editor" class="code-editor"></textarea>
+        <pre id="kond-diff" class="diff hidden"></pre>
+        <div id="kond-error" class="test-result error hidden" style="margin-top:10px;"></div>
+
+        <div class="row">
+          <button id="btn-save-kond" class="primary">Konditionen speichern</button>
+        </div>
+      </section>
     </section>
 
     <div id="loading" class="loading hidden">

@@ -16,6 +16,17 @@ function toast(msg, kind = "info") {
   setTimeout(() => t.classList.add("hidden"), 4000);
 }
 
+// ---------- Tab switching ----------
+
+for (const btn of document.querySelectorAll(".tab")) {
+  btn.addEventListener("click", () => {
+    for (const b of document.querySelectorAll(".tab")) b.classList.remove("active");
+    btn.classList.add("active");
+    for (const p of document.querySelectorAll(".tab-pane")) p.classList.add("hidden");
+    $(`tab-${btn.dataset.tab}`).classList.remove("hidden");
+  });
+}
+
 // ---------- General ----------
 
 async function loadGeneral() {
@@ -135,7 +146,115 @@ $("btn-delete-logo").addEventListener("click", async () => {
   }
 });
 
+// ---------- Konditionen ----------
+
+let kondDefault = null;
+let diffVisibleKond = false;
+
+async function loadKonditionen() {
+  showLoading("Lade Konditionen…");
+  try {
+    const res = await fetch("/api/konditionen");
+    const data = await res.json();
+    $("kond-editor").value = JSON.stringify(data.current, null, 2);
+    kondDefault = data.default;
+  } finally {
+    hideLoading();
+  }
+}
+
+function setKondError(msg) {
+  const el = $("kond-error");
+  if (!msg) {
+    el.classList.add("hidden");
+    return;
+  }
+  el.textContent = msg;
+  el.classList.remove("hidden");
+}
+
+$("btn-save-kond").onclick = async () => {
+  let parsed;
+  try {
+    parsed = JSON.parse($("kond-editor").value);
+  } catch (e) {
+    setKondError(`JSON ungültig: ${e.message}`);
+    return;
+  }
+  setKondError(null);
+  showLoading("Speichere Konditionen…");
+  try {
+    const res = await fetch("/api/konditionen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ konditionen: parsed }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || "Fehler beim Speichern");
+    $("kond-editor").value = JSON.stringify(data.current, null, 2);
+    toast("Konditionen gespeichert — wirkt sofort auf die nächste Berechnung.", "success");
+  } catch (e) {
+    setKondError(`Fehler: ${e.message}`);
+  } finally {
+    hideLoading();
+  }
+};
+
+$("btn-reset-kond").onclick = async () => {
+  if (!confirm("Konditionen wirklich auf die ausgelieferten Skill-Defaults zurücksetzen? Eigene Änderungen gehen verloren.")) return;
+  showLoading("Setze zurück…");
+  try {
+    const res = await fetch("/api/konditionen/reset", { method: "POST" });
+    const data = await res.json();
+    $("kond-editor").value = JSON.stringify(data.current, null, 2);
+    setKondError(null);
+    toast("Konditionen auf Default zurückgesetzt.", "success");
+  } catch (e) {
+    toast(`Fehler: ${e.message}`, "error");
+  } finally {
+    hideLoading();
+  }
+};
+
+$("btn-toggle-diff-kond").onclick = () => {
+  diffVisibleKond = !diffVisibleKond;
+  const pane = $("kond-diff");
+  if (!diffVisibleKond) {
+    pane.classList.add("hidden");
+    $("btn-toggle-diff-kond").textContent = "Diff anzeigen";
+    return;
+  }
+  let current;
+  try {
+    current = JSON.parse($("kond-editor").value);
+  } catch (e) {
+    setKondError(`JSON ungültig: ${e.message}`);
+    diffVisibleKond = false;
+    return;
+  }
+  pane.textContent = simpleDiff(
+    JSON.stringify(kondDefault, null, 2),
+    JSON.stringify(current, null, 2),
+  );
+  pane.classList.remove("hidden");
+  $("btn-toggle-diff-kond").textContent = "Diff verstecken";
+};
+
+function simpleDiff(a, b) {
+  const A = a.split("\n");
+  const B = b.split("\n");
+  const out = [];
+  const max = Math.max(A.length, B.length);
+  for (let i = 0; i < max; i++) {
+    if (A[i] === B[i]) continue;
+    if (A[i] !== undefined) out.push(`- ${A[i]}`);
+    if (B[i] !== undefined) out.push(`+ ${B[i]}`);
+  }
+  return out.length ? out.join("\n") : "Keine Änderungen.";
+}
+
 // ---------- Init ----------
 
 loadGeneral();
 loadLogo();
+loadKonditionen();

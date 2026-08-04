@@ -26,6 +26,9 @@ Live unter `https://forderrechner.bay-ram.de` (Authelia-geschützt). Fertig:
   Skill-Referenzen abgesichert, klar als unverifiziert gekennzeichnet
 - HERO-Kundensuche (optional, analog Wärmebrücken-Tool): Kunde/Adresse per
   Live-Suche aus HERO übernehmen statt manuell einzutippen
+- Editierbarer Konditionen-Tab im Settings-Menü: alle Sätze/Boni/Höchstgrenzen/
+  Stichtage als JSON, wirkt sofort auf die nächste Berechnung (kein Redeploy
+  nötig, wenn sich die Förderrichtlinie ändert)
 
 Alle skill-gestützten Module (BEG EM/Heizung/systemisch, §35c) sind gegen die
 Rechenbeispiele aus `beg-em-foerderung/references/*.md` per Unit-Test verifiziert
@@ -79,10 +82,22 @@ ausgeblendet, manuelle Kundenerfassung funktioniert immer. Env:
 - `HERO_URL` — GraphQL-Endpoint, Default = offizieller HERO-Endpoint
 - `HERO_TOKEN` — API-Key mit Lesezugriff auf `project_matches`
 
+### Konditionen anpassen
+
+Settings → Tab „Konditionen": alle Fördersätze/Boni/Höchstgrenzen/Stichtage als
+JSON editierbar (`app/calc/konditionen_store.py` definiert `DEFAULT_KONDITIONEN`
+als Referenz). Änderungen werden in `DATA_DIR/konditionen.json` persistiert und
+überstehen Container-Updates (Volume-Mount). „Auf Original zurücksetzen" stellt
+die Skill-verifizierten Ausgangswerte wieder her — bei Zweifeln an einem
+editierten Wert also immer ein sicherer Ausweg. Die Unit-Tests in `tests/`
+prüfen ausschließlich gegen `DEFAULT_KONDITIONEN` (Funktionsaufrufe ohne
+`k`-Parameter), nie gegen editierte Laufzeitwerte.
+
 ## Datenpersistenz
 
 ```
 data/
-├── settings.json    Firmenname, Kontakt, Akzentfarbe
-└── logo.*           Firmenlogo
+├── settings.json      Firmenname, Kontakt, Akzentfarbe
+├── konditionen.json   Fördersätze/Boni/Höchstgrenzen/Stichtage (editierbar)
+└── logo.*             Firmenlogo
 ```
