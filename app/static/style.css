@@ -282,6 +282,19 @@ button.danger { color: #c0392b; border-color: #e57373; }
   margin: 18px 0;
 }
 
+table.jahresstaffel {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 13px;
+}
+table.jahresstaffel th, table.jahresstaffel td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+}
+table.jahresstaffel th { color: var(--muted); font-weight: 600; }
+
 .hint {
   font-size: 14px;
   color: var(--muted);

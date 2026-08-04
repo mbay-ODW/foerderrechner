@@ -1,8 +1,10 @@
 """Orchestriert die Förderberechnung über alle Programme eines Antrags.
 
-Aktuell: BEG Einzelmaßnahmen (Hülle/Anlagentechnik/Heizungsoptimierung/
-Fachplanung) inkl. Höchstgrenzen-Deckelung. Heizungsförderung, systemische
-Sanierung, §35c und iSFP-Förderung werden in weiteren Schritten ergänzt.
+BEG Einzelmaßnahmen, BEG-Heizungsförderung, BEG WG/NWG systemische Sanierung
+und § 35c EStG (als mitgerechnete Alternative pro Maßnahme). Jede EM-/
+Heizungsmaßnahme kann per `steuerbonus_statt_zuschuss` statt als BEG-Zuschuss
+über § 35c beantragt werden — deren Kosten fließen dann NICHT in die BEG-
+Höchstgrenzen/-Summen, sondern in den gemeinsamen § 35c-Objekt-Deckel.
 """
 
 from __future__ import annotations
@@ -16,17 +18,26 @@ from .beg_heizung import berechne_heizung_massnahme, hoechstbetrag_heizung_gesam
 from .beg_systemisch import berechne_systemisch
 from .models import CalcInput, EMKategorie
 from .regime import bestimme_regime
+from .steuerbonus_35c import berechne_35c
+
+
+def _kappe(summe_foerderfaehig: float, summe_zuschuss: float, grenze: float) -> tuple[float, bool]:
+    gedeckelt = summe_foerderfaehig > grenze
+    if gedeckelt and summe_foerderfaehig > 0:
+        return summe_zuschuss * (grenze / summe_foerderfaehig), True
+    return summe_zuschuss, False
 
 
 def berechne(calc_input: CalcInput) -> dict:
     regime = bestimme_regime(calc_input.antragsdatum, calc_input.regime)
-
     isfp_aktiv = any(m.isfp_vorhanden for m in calc_input.em_massnahmen)
 
-    em_ergebnisse = []
-    fachplanung_ergebnisse = []
+    # ---------- BEG-EM (nur Maßnahmen ohne Steuerbonus-Flag) ----------
+    em_ergebnisse, fachplanung_ergebnisse = [], []
     for m in calc_input.em_massnahmen:
         erg = berechne_em_massnahme(m, regime, calc_input.antragsdatum)
+        if m.steuerbonus_statt_zuschuss:
+            continue
         if m.kategorie == EMKategorie.FACHPLANUNG:
             fachplanung_ergebnisse.append(erg)
         else:
@@ -34,35 +45,22 @@ def berechne(calc_input: CalcInput) -> dict:
 
     em_summe_foerderfaehig = sum(m.massnahme.kosten for m in em_ergebnisse)
     em_summe_zuschuss_ungedeckelt = sum(m.betrag for m in em_ergebnisse)
-
-    grenze_em, grenze_em_erklaerung = hoechstgrenze_em(
-        calc_input.gebaeude, regime, isfp_aktiv
+    grenze_em, grenze_em_erklaerung = hoechstgrenze_em(calc_input.gebaeude, regime, isfp_aktiv)
+    em_summe_zuschuss, gedeckelt = _kappe(
+        em_summe_foerderfaehig, em_summe_zuschuss_ungedeckelt, grenze_em
     )
-    # Deckelung wirkt auf die förderfähigen AUSGABEN, nicht direkt auf den
-    # Zuschuss — vereinfachend (da unterschiedliche Sätze je Maßnahme
-    # gemischt sein können) kappen wir hier den Zuschuss anteilig am
-    # Verhältnis gedeckelte/ungedeckelte förderfähige Ausgaben.
-    gedeckelt = em_summe_foerderfaehig > grenze_em
-    if gedeckelt and em_summe_foerderfaehig > 0:
-        kappungsfaktor = grenze_em / em_summe_foerderfaehig
-        em_summe_zuschuss = em_summe_zuschuss_ungedeckelt * kappungsfaktor
-    else:
-        kappungsfaktor = 1.0
-        em_summe_zuschuss = em_summe_zuschuss_ungedeckelt
 
     grenze_fachplanung, grenze_fachplanung_erklaerung = hoechstgrenze_fachplanung(
         calc_input.gebaeude
     )
     fachplanung_summe_foerderfaehig = sum(m.massnahme.kosten for m in fachplanung_ergebnisse)
     fachplanung_summe_zuschuss_ungedeckelt = sum(m.betrag for m in fachplanung_ergebnisse)
-    fachplanung_gedeckelt = fachplanung_summe_foerderfaehig > grenze_fachplanung
-    if fachplanung_gedeckelt and fachplanung_summe_foerderfaehig > 0:
-        fp_kappungsfaktor = grenze_fachplanung / fachplanung_summe_foerderfaehig
-        fachplanung_summe_zuschuss = fachplanung_summe_zuschuss_ungedeckelt * fp_kappungsfaktor
-    else:
-        fp_kappungsfaktor = 1.0
-        fachplanung_summe_zuschuss = fachplanung_summe_zuschuss_ungedeckelt
+    fachplanung_summe_zuschuss, fachplanung_gedeckelt = _kappe(
+        fachplanung_summe_foerderfaehig, fachplanung_summe_zuschuss_ungedeckelt,
+        grenze_fachplanung,
+    )
 
+    # ---------- Heizungsförderung (nur Maßnahmen ohne Steuerbonus-Flag) ----------
     heizung_ergebnisse = [
         berechne_heizung_massnahme(
             m, regime, calc_input.antragsdatum,
@@ -70,20 +68,25 @@ def berechne(calc_input: CalcInput) -> dict:
             selbstnutzer=calc_input.antragsteller.selbstnutzer,
             familienzuschlag=calc_input.antragsteller.kind_minderjaehrig,
         )
-        for m in calc_input.heizung_massnahmen
+        for m in calc_input.heizung_massnahmen if not m.steuerbonus_statt_zuschuss
     ]
     heizung_foerderfaehig_summe = sum(e["foerderfaehige_kosten"] for e in heizung_ergebnisse)
     heizung_zuschuss_ungedeckelt = sum(e["betrag"] for e in heizung_ergebnisse)
     grenze_heizung, grenze_heizung_erklaerung = hoechstbetrag_heizung_gesamt(
         calc_input.gebaeude, regime, calc_input.antragsdatum
     )
-    heizung_gedeckelt = heizung_foerderfaehig_summe > grenze_heizung
-    if heizung_gedeckelt and heizung_foerderfaehig_summe > 0:
-        heizung_kappungsfaktor = grenze_heizung / heizung_foerderfaehig_summe
-        heizung_zuschuss = heizung_zuschuss_ungedeckelt * heizung_kappungsfaktor
-    else:
-        heizung_zuschuss = heizung_zuschuss_ungedeckelt
+    heizung_zuschuss, heizung_gedeckelt = _kappe(
+        heizung_foerderfaehig_summe, heizung_zuschuss_ungedeckelt, grenze_heizung
+    )
 
+    # ---------- § 35c EStG (Maßnahmen MIT Steuerbonus-Flag, gemeinsamer Objekt-Deckel) ----------
+    kosten_35c = sum(
+        m.kosten for m in calc_input.em_massnahmen
+        if m.steuerbonus_statt_zuschuss and m.kategorie != EMKategorie.FACHPLANUNG
+    ) + sum(m.kosten for m in calc_input.heizung_massnahmen if m.steuerbonus_statt_zuschuss)
+    steuerbonus_ergebnis = berechne_35c(kosten_35c) if kosten_35c > 0 else None
+
+    # ---------- Systemische Sanierung (eigenes, nicht kombinierbares Programm) ----------
     systemisch_ergebnis = None
     warnungen = []
     if calc_input.systemische_sanierung is not None:
@@ -97,6 +100,9 @@ def berechne(calc_input: CalcInput) -> dict:
                 "beantragen. Beide Ergebnisse werden hier nur zum Vergleich "
                 "nebeneinander angezeigt."
             )
+
+    zuschuss_gesamt = em_summe_zuschuss + fachplanung_summe_zuschuss + heizung_zuschuss
+    steuerbonus_betrag = steuerbonus_ergebnis["betrag_gesamt"] if steuerbonus_ergebnis else 0.0
 
     return {
         "regime": regime.value,
@@ -129,7 +135,7 @@ def berechne(calc_input: CalcInput) -> dict:
             "gedeckelt": fachplanung_gedeckelt,
             "zuschuss": round(fachplanung_summe_zuschuss, 2),
         },
-        "zuschuss_gesamt": round(
-            em_summe_zuschuss + fachplanung_summe_zuschuss + heizung_zuschuss, 2
-        ),
+        "steuerbonus_35c": steuerbonus_ergebnis,
+        "zuschuss_gesamt": round(zuschuss_gesamt, 2),
+        "gesamtvorteil_inkl_steuerbonus": round(zuschuss_gesamt + steuerbonus_betrag, 2),
     }

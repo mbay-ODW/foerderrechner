@@ -48,6 +48,9 @@ function addMassnahmeRow(prefill = {}) {
       <label class="checkbox-label"><input type="checkbox" class="mn-isfp" /> iSFP vorhanden</label>
       <label class="checkbox-label mn-daemmung-wrap"><input type="checkbox" class="mn-daemmung" /> davon Dämmung (5.1a)</label>
       <label class="checkbox-label mn-daemmung-wrap"><input type="checkbox" class="mn-wpb" /> WPB-Gebäude nachgewiesen</label>
+    </div>
+    <div class="row mn-optionen">
+      <label class="checkbox-label"><input type="checkbox" class="mn-steuerbonus" /> § 35c-Steuerbonus statt BEG-Zuschuss beantragen</label>
       <button class="secondary small danger mn-remove" type="button">Entfernen</button>
     </div>
   `;
@@ -111,6 +114,9 @@ function addHeizungRow() {
       <label class="checkbox-label"><input type="checkbox" class="hz-ee-ab-2008" /> Gebäude hat bereits EE-Anlage ab Bj. 2008 (NEU, ab Q1/2027: Ausschluss)</label>
       <label class="checkbox-label"><input type="checkbox" class="hz-ee-vor-2008" /> Ersatz EE-Anlage vor 2008 (NEU, ab Q1/2027: nur 25% förderfähig)</label>
     </div>
+    <div class="row mn-optionen">
+      <label class="checkbox-label"><input type="checkbox" class="hz-steuerbonus" /> § 35c-Steuerbonus statt BEG-Zuschuss beantragen</label>
+    </div>
   `;
   $("heizung-liste").appendChild(wrap);
   wrap.querySelector(".hz-remove").addEventListener("click", () => wrap.remove());
@@ -132,6 +138,7 @@ function sammleHeizungMassnahmen() {
       ersatz_gas_biomasse_ab_20_jahre: row.querySelector(".hz-kgb2").checked,
       ersatz_ee_anlage_baujahr_ab_2008: row.querySelector(".hz-ee-ab-2008").checked,
       ersatz_ee_anlage_vor_2008: row.querySelector(".hz-ee-vor-2008").checked,
+      steuerbonus_statt_zuschuss: row.querySelector(".hz-steuerbonus").checked,
     });
   }
   return massnahmen;
@@ -163,6 +170,7 @@ function sammleMassnahmen() {
       isfp_vorhanden: row.querySelector(".mn-isfp").checked,
       ist_daemmung: row.querySelector(".mn-daemmung").checked,
       wpb_gebaeude: row.querySelector(".mn-wpb").checked,
+      steuerbonus_statt_zuschuss: row.querySelector(".mn-steuerbonus").checked,
     });
   }
   return massnahmen;
@@ -206,6 +214,29 @@ function renderMassnahmenBlock(titel, block) {
 $("systemisch-aktiv").addEventListener("change", () => {
   $("systemisch-felder").classList.toggle("hidden", !$("systemisch-aktiv").checked);
 });
+
+function renderSteuerbonusBlock(erg) {
+  if (!erg) return "";
+  return `
+    <div class="ergebnis-block">
+      <h3>§ 35c-Steuerbonus (statt BEG-Zuschuss)</h3>
+      <div class="ergebnis-massnahme">
+        <div class="muted small">Kosten der umgeschalteten Maßnahmen: ${euro(erg.kosten_summe)}</div>
+        <ul class="rechenweg">${erg.rechenweg.map(r => `<li>${r}</li>`).join("")}</ul>
+        <table class="jahresstaffel">
+          <thead><tr><th>Jahr</th><th>Satz</th><th>Betrag</th></tr></thead>
+          <tbody>
+            ${erg.jahresstaffelung.map(j => `<tr><td>${j.jahr}</td><td>${(j.satz * 100).toFixed(0)} %</td><td>${euro(j.betrag)}</td></tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+      ${erg.gedeckelt ? `<div class="badge">Gedeckelt (40.000 €/Objekt)</div>` : ""}
+      <div class="ergebnis-summe-zeile total">
+        <span>Steuerbonus gesamt (3 Jahre)</span><span>${euro(erg.betrag_gesamt)}</span>
+      </div>
+    </div>
+  `;
+}
 
 function renderSystemischBlock(erg) {
   if (!erg) return "";
@@ -330,10 +361,16 @@ $("btn-berechnen").addEventListener("click", async () => {
         ${renderMassnahmenBlock("BEG-Einzelmaßnahmen", data.beg_em)}
         ${renderMassnahmenBlock("Fachplanung & Baubegleitung", data.fachplanung)}
         ${renderHeizungBlock(data.beg_heizung)}
+        ${renderSteuerbonusBlock(data.steuerbonus_35c)}
         ${renderSystemischBlock(data.beg_systemisch)}
-        <div class="ergebnis-summe-zeile total gesamt">
-          <span>Zuschuss gesamt</span><span>${euro(data.zuschuss_gesamt)}</span>
+        <div class="ergebnis-summe-zeile total">
+          <span>Zuschuss gesamt (BEG)</span><span>${euro(data.zuschuss_gesamt)}</span>
         </div>
+        ${data.steuerbonus_35c ? `
+          <div class="ergebnis-summe-zeile total gesamt">
+            <span>Gesamtvorteil inkl. Steuerbonus</span><span>${euro(data.gesamtvorteil_inkl_steuerbonus)}</span>
+          </div>
+        ` : ""}
       </section>
     `;
     $("ergebnis").innerHTML = html;

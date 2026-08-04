@@ -70,6 +70,7 @@ class EMMassnahme(BaseModel):
     isfp_alter_jahre: float | None = None
     wpb_gebaeude: bool = False  # Worst Performing Building nachgewiesen
     ist_daemmung: bool = False  # 5.1a — nur relevant für HUELLE (WPB-Bonus-Voraussetzung)
+    steuerbonus_statt_zuschuss: bool = False  # § 35c EStG statt BEG-Zuschuss beantragen
 
 
 class HeizungMassnahme(BaseModel):
@@ -80,6 +81,7 @@ class HeizungMassnahme(BaseModel):
     ersatz_gas_biomasse_ab_20_jahre: bool = False
     ersatz_ee_anlage_baujahr_ab_2008: bool = False  # NEU: schließt ab Q1/2027 aus
     ersatz_ee_anlage_vor_2008: bool = False          # NEU: nur 25% foerderfaehig ab Q1/2027
+    steuerbonus_statt_zuschuss: bool = False  # § 35c EStG statt BEG-Zuschuss beantragen
 
 
 class SystemischeSanierung(BaseModel):
