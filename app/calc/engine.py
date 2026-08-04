@@ -13,6 +13,7 @@ from .beg_em import (
     hoechstgrenze_fachplanung,
 )
 from .beg_heizung import berechne_heizung_massnahme, hoechstbetrag_heizung_gesamt
+from .beg_systemisch import berechne_systemisch
 from .models import CalcInput, EMKategorie
 from .regime import bestimme_regime
 
@@ -83,8 +84,24 @@ def berechne(calc_input: CalcInput) -> dict:
     else:
         heizung_zuschuss = heizung_zuschuss_ungedeckelt
 
+    systemisch_ergebnis = None
+    warnungen = []
+    if calc_input.systemische_sanierung is not None:
+        systemisch_ergebnis = berechne_systemisch(
+            calc_input.systemische_sanierung, calc_input.gebaeude, regime
+        )
+        if calc_input.em_massnahmen or calc_input.heizung_massnahmen:
+            warnungen.append(
+                "BEG WG/NWG (systemische Sanierung) ist NICHT mit BEG EM/Heizungs-"
+                "förderung kombinierbar — bitte nur eines der beiden Programme "
+                "beantragen. Beide Ergebnisse werden hier nur zum Vergleich "
+                "nebeneinander angezeigt."
+            )
+
     return {
         "regime": regime.value,
+        "warnungen": warnungen,
+        "beg_systemisch": systemisch_ergebnis,
         "beg_heizung": {
             "massnahmen": heizung_ergebnisse,
             "foerderfaehige_kosten_summe": round(heizung_foerderfaehig_summe, 2),

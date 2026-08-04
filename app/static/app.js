@@ -203,6 +203,36 @@ function renderMassnahmenBlock(titel, block) {
   `;
 }
 
+$("systemisch-aktiv").addEventListener("change", () => {
+  $("systemisch-felder").classList.toggle("hidden", !$("systemisch-aktiv").checked);
+});
+
+function renderSystemischBlock(erg) {
+  if (!erg) return "";
+  return `
+    <div class="ergebnis-block">
+      <h3>Systemische Sanierung — ${erg.stufe}</h3>
+      <div class="ergebnis-massnahme">
+        <div class="muted small">Satz: ${(erg.satz_prozentual * 100).toFixed(1)} % · Förderfähige Kosten: ${euro(erg.foerderfaehige_kosten)}</div>
+        <ul class="rechenweg">${erg.rechenweg.map(r => `<li>${r}</li>`).join("")}</ul>
+      </div>
+      <div class="ergebnis-summe-zeile muted small">
+        <span>Höchstgrenze (${erg.hoechstgrenze_erklaerung})</span><span>${euro(erg.hoechstgrenze)}</span>
+      </div>
+      ${erg.gedeckelt ? `<div class="badge">Gedeckelt</div>` : ""}
+      <div class="ergebnis-summe-zeile">
+        <span>Zuschuss Sanierung</span><span>${euro(erg.betrag)}</span>
+      </div>
+      <div class="ergebnis-summe-zeile">
+        <span>Zuschuss Fachplanung (${euro(erg.fachplanung.foerderfaehige_kosten)} × 50%)</span><span>${euro(erg.fachplanung.betrag)}</span>
+      </div>
+      <div class="ergebnis-summe-zeile total">
+        <span>Zuschuss gesamt (systemisch)</span><span>${euro(erg.zuschuss_gesamt)}</span>
+      </div>
+    </div>
+  `;
+}
+
 function renderHeizungBlock(block) {
   if (!block.massnahmen.length) return "";
   const rows = block.massnahmen.map(m => `
@@ -255,9 +285,25 @@ $("btn-berechnen").addEventListener("click", async () => {
     },
     em_massnahmen: sammleMassnahmen(),
     heizung_massnahmen: sammleHeizungMassnahmen(),
+    systemische_sanierung: null,
   };
 
-  if (!payload.em_massnahmen.length && !payload.heizung_massnahmen.length) {
+  if ($("systemisch-aktiv").checked) {
+    const sysKosten = parseFloat($("sys-kosten").value);
+    if (sysKosten > 0) {
+      payload.systemische_sanierung = {
+        stufe: $("sys-stufe").value,
+        kosten: sysKosten,
+        kommunal: $("sys-kommunal").checked,
+        wpb_bonus: $("sys-wpb").checked,
+        sersan_bonus: $("sys-sersan").checked,
+        nh_bonus: $("sys-nh").checked,
+        fachplanung_kosten: parseFloat($("sys-fachplanung").value) || 0,
+      };
+    }
+  }
+
+  if (!payload.em_massnahmen.length && !payload.heizung_massnahmen.length && !payload.systemische_sanierung) {
     toast("Bitte mindestens eine Maßnahme mit Kosten eingeben.", "error");
     return;
   }
@@ -280,9 +326,11 @@ $("btn-berechnen").addEventListener("click", async () => {
           <h2>Ergebnis</h2>
           <span class="badge regime-badge">Regime: ${data.regime}</span>
         </div>
+        ${(data.warnungen || []).map(w => `<div class="hint">${w}</div>`).join("")}
         ${renderMassnahmenBlock("BEG-Einzelmaßnahmen", data.beg_em)}
         ${renderMassnahmenBlock("Fachplanung & Baubegleitung", data.fachplanung)}
         ${renderHeizungBlock(data.beg_heizung)}
+        ${renderSystemischBlock(data.beg_systemisch)}
         <div class="ergebnis-summe-zeile total gesamt">
           <span>Zuschuss gesamt</span><span>${euro(data.zuschuss_gesamt)}</span>
         </div>

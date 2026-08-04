@@ -93,6 +93,42 @@
         </div>
       </section>
 
+      <section class="card">
+        <div class="row-header">
+          <h2>Systemische Sanierung (BEG WG/NWG)</h2>
+          <label class="checkbox-label" style="flex:0 0 auto;"><input type="checkbox" id="systemisch-aktiv" /> aktivieren</label>
+        </div>
+        <p class="muted small">Effizienzhaus/-gebäude-Komplettsanierung — eigenes Programm, <strong>nicht</strong> mit BEG EM/Heizungsförderung kombinierbar.</p>
+        <div id="systemisch-felder" class="hidden">
+          <div class="row-3">
+            <label>
+              <span>Effizienzhaus/-gebäude-Stufe</span>
+              <select id="sys-stufe">
+                <option value="eh40_ee">EH/EG 40 EE</option>
+                <option value="eh55_ee">EH/EG 55 EE</option>
+                <option value="eh70_ee">EH/EG 70 EE</option>
+                <option value="eh85_ee">EH 85 EE (nur WG)</option>
+                <option value="denkmal_ee">Denkmal EE</option>
+              </select>
+            </label>
+            <label>
+              <span>Förderfähige Kosten gesamt (€)</span>
+              <input id="sys-kosten" type="number" min="0" step="0.01" />
+            </label>
+            <label>
+              <span>Fachplanung/Baubegleitung (€)</span>
+              <input id="sys-fachplanung" type="number" min="0" step="0.01" value="0" />
+            </label>
+          </div>
+          <div class="row mn-optionen">
+            <label class="checkbox-label"><input type="checkbox" id="sys-kommunal" /> Kommunaler Zuschuss statt Tilgungszuschuss</label>
+            <label class="checkbox-label"><input type="checkbox" id="sys-wpb" /> WPB-Bonus</label>
+            <label class="checkbox-label"><input type="checkbox" id="sys-sersan" /> SerSan-Bonus</label>
+            <label class="checkbox-label"><input type="checkbox" id="sys-nh" /> NH-Bonus</label>
+          </div>
+        </div>
+      </section>
+
       <div class="row">
         <button id="btn-berechnen" class="primary">Förderung berechnen</button>
       </div>

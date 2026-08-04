@@ -33,6 +33,14 @@ class EMKategorie(str, Enum):
     FACHPLANUNG = "fachplanung"                 # 5.5
 
 
+class EffizienzhausStufe(str, Enum):
+    DENKMAL_EE = "denkmal_ee"
+    EH85_EE = "eh85_ee"
+    EH70_EE = "eh70_ee"
+    EH55_EE = "eh55_ee"
+    EH40_EE = "eh40_ee"
+
+
 class Waermequelle(str, Enum):
     """Für die BEG-Heizungsförderung relevante Wärmepumpen-Herkunft (EU-
     Wertschöpfungsbonus ab Quartal 1 2027)."""
@@ -74,6 +82,19 @@ class HeizungMassnahme(BaseModel):
     ersatz_ee_anlage_vor_2008: bool = False          # NEU: nur 25% foerderfaehig ab Q1/2027
 
 
+class SystemischeSanierung(BaseModel):
+    """BEG WG/NWG — Effizienzhaus/-gebäude-Komplettsanierung. Eigenes
+    Förderprogramm, NICHT mit BEG EM kombinierbar (Skill: 'BEG WG/NWG nicht
+    mit BEG EM kombinierbar')."""
+    stufe: EffizienzhausStufe
+    kosten: float = Field(gt=0)
+    kommunal: bool = False  # Investitionszuschuss statt Tilgungszuschuss
+    wpb_bonus: bool = False
+    sersan_bonus: bool = False  # serielle Sanierung
+    nh_bonus: bool = False      # Nachhaltigkeit (QNG-PLUS/LCA)
+    fachplanung_kosten: float = 0.0
+
+
 class CalcInput(BaseModel):
     regime: Regime = Regime.AUTO
     antragsdatum: date
@@ -81,3 +102,4 @@ class CalcInput(BaseModel):
     antragsteller: Antragsteller
     em_massnahmen: list[EMMassnahme] = []
     heizung_massnahmen: list[HeizungMassnahme] = []
+    systemische_sanierung: SystemischeSanierung | None = None

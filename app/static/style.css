@@ -281,3 +281,13 @@ button.danger { color: #c0392b; border-color: #e57373; }
   border-top: 1px solid var(--border);
   margin: 18px 0;
 }
+
+.hint {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  border-radius: 8px;
+}
