@@ -11,7 +11,9 @@ eigenem Logo.
 
 ## Stand
 
-Live unter `https://forderrechner.bay-ram.de` (Authelia-geschützt). Fertig:
+Live deployed hinter Traefik + Authelia (Host/Domain bewusst nicht in diesem
+öffentlichen Repo — wird ausschließlich über die private Deploy-Umgebung
+verwaltet). Fertig:
 
 - BEG-Einzelmaßnahmen (Hülle/Anlagentechnik/Heizungsoptimierung/Fachplanung),
   ALT+NEU-Regime, iSFP-/WPB-Bonus, Höchstgrenzen-Deckelung
@@ -44,33 +46,17 @@ Läuft auf `http://localhost:8010`.
 
 ## Deployment
 
-Produktivvariante mit Traefik + Authelia: `docker-compose.yml`, Domain
-`forderrechner.bay-ram.de`, Portainer-Stack 58 auf TrueNAS (env 1).
+Produktivvariante mit Traefik + Authelia: `docker-compose.yml`. Der Hostname
+wird bewusst NICHT im Compose-File hardcodiert, sondern per `${DOMAIN}`-Env
+zur Deploy-Zeit gesetzt (Portainer-Stack-Env bzw. lokale `.env`) — Host/IP/
+Stack-Details der konkreten Produktivumgebung sind absichtlich nicht Teil
+dieses öffentlichen Repos, siehe private Ops-Dokumentation.
 
 **GHCR-Package ist public** (Package-Settings → Change visibility, manuell
 umgestellt), `docker pull ghcr.io/mbay-odw/foerderrechner:latest` funktioniert
-also grundsätzlich. Der aktuell deployte Stack läuft aber weiterhin auf einem
-**lokal auf dem TrueNAS-Host gebauten Image** (`foerderrechner:latest`, kein
-Registry-Pfad) — der lokale Build-Workflow ist unverändert der schnellste Weg
-für Redeploys ohne CI-Wartezeit:
-
-```bash
-# Build-Kontext auf den Host kopieren (Port 5022)
-tar --exclude='.git' --exclude='data' --exclude='.venv' --exclude='tests' \
-  --exclude='.pytest_cache' -czf /tmp/build.tar.gz .
-scp -i ~/.ssh/id_ed25519_truenas -P 5022 /tmp/build.tar.gz \
-  truenas_admin@10.0.1.14:/home/truenas_admin/build.tar.gz
-
-# Auf dem Host: entpacken + bauen (truenas_admin hat sudo docker, aber keinen
-# direkten Socket-Zugriff)
-ssh -i ~/.ssh/id_ed25519_truenas -p 5022 truenas_admin@10.0.1.14 \
-  'rm -rf foerderrechner-build && mkdir foerderrechner-build && cd foerderrechner-build \
-   && tar xzf ../build.tar.gz && rm ../build.tar.gz && sudo docker build -t foerderrechner:latest .'
-
-# Stack redeployen (Portainer-Token liegt im portainer-mcp-Container, siehe
-# reference_portainer_redeploy-Memory): PUT /api/stacks/58?endpointId=1
-# mit stackFileContent aus GET /api/stacks/58/file + env aus GET /api/stacks/58
-```
+also grundsätzlich. Alternativ lässt sich das Image auch lokal auf dem
+Zielhost bauen (`docker build -t foerderrechner:latest .`) für einen
+CI-unabhängigen Redeploy-Zyklus — Details dazu in der privaten Ops-Doku.
 
 ### HERO-Kundensuche
 

@@ -20,7 +20,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=traefik
-      - traefik.http.routers.foerderrechner.rule=Host(`forderrechner.bay-ram.de`)
+      - traefik.http.routers.foerderrechner.rule=Host(`${DOMAIN}`)
       - traefik.http.routers.foerderrechner.entrypoints=websecure
       - traefik.http.routers.foerderrechner.tls=true
       - traefik.http.routers.foerderrechner.tls.certresolver=mydnschallenge
