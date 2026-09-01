@@ -30,8 +30,8 @@ import os
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import Response
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -69,6 +69,37 @@ konditionen_store.ensure_bootstrap()
 STATIC_DIR = Path(__file__).parent / "static"
 
 app = FastAPI(title="Förderrechner")
+
+AUTH_REQUIRED = os.environ.get("AUTH_REQUIRED", "true").lower() == "true"
+_AUTH_EXEMPT = {"/healthz"}
+
+
+@app.middleware("http")
+async def require_proxy_user(request: Request, call_next):
+    """Second line of defence behind Authelia's forward-auth.
+
+    Nothing here checked anything on its own -- the service depended entirely on a
+    single `middlewares-authelia` entry in the Traefik labels. That matters most for
+    GET /api/hero/projects: it searches HERO's customer records (name, street, postal
+    code, town) using the server-side HERO token, so the caller needs no credential of
+    their own. Without the proxy that is an open, tokenless search over personal data.
+    Requiring the same header inside the app turns a missing middleware into a 401.
+
+    Written as middleware rather than a router dependency so it also covers the mounted
+    SPA, which a `dependencies=[...]` on FastAPI() would not reach.
+
+    This trusts Remote-User because every router on this host runs forward-auth, so the
+    proxy always overwrites whatever a client sent. Adding a route that bypasses
+    Authelia would break that assumption -- the header would have to be stripped there,
+    and this check taught about it.
+
+    AUTH_REQUIRED=false is for local development without a proxy. It defaults to on, so
+    a deployment that forgets the variable is closed rather than open.
+    """
+    if AUTH_REQUIRED and request.url.path not in _AUTH_EXEMPT:
+        if not (request.headers.get("Remote-User") or request.headers.get("X-Forwarded-User")):
+            return JSONResponse({"detail": "unauthenticated"}, status_code=401)
+    return await call_next(request)
 
 
 # ---------- Pydantic models ----------
