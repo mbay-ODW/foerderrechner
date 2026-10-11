@@ -11,7 +11,7 @@ Endpoints:
   GET    /api/hero/status       — HERO-Integration konfiguriert?
   GET    /api/hero/projects     — HERO-Projekt-/Kundensuche
 
-  POST   /api/beta/nebenprogramme — KfW-Beta-Programme + iSFP-Erstellungsförderung
+  POST   /api/beta/nebenprogramme — KfW-Beta-Programme
 
   GET    /api/settings         — Branding-Settings (Firma, Kontakt, Akzentfarbe)
   POST   /api/settings         — Settings patchen
@@ -41,7 +41,6 @@ from .calc.engine import berechne
 from .calc.kfw_nebenprogramme import (
     altersgerecht_umbauen,
     gewerbe_zu_wohnen,
-    isfp_erstellungsfoerderung,
     jung_kauft_alt,
     wohneigentumsprogramm,
 )
@@ -161,14 +160,13 @@ async def get_hero_projects(q: str = "") -> dict[str, Any]:
     return {"results": results}
 
 
-# ---------- Beta: KfW-Nebenprogramme + iSFP-Erstellungsförderung ----------
+# ---------- Beta: KfW-Nebenprogramme ----------
 
 
 class BetaRequest(BaseModel):
     anzahl_kinder: int = 1
     zve_haushalt: float | None = None
     anzahl_we: int = 1
-    isfp_kosten: float | None = None
 
 
 @app.post("/api/beta/nebenprogramme")
@@ -180,8 +178,6 @@ def post_beta_nebenprogramme(req: BetaRequest) -> dict[str, Any]:
         altersgerecht_umbauen(req.anzahl_we, k),
         gewerbe_zu_wohnen(),
     ]
-    if req.isfp_kosten:
-        ergebnisse.append(isfp_erstellungsfoerderung(req.isfp_kosten, req.anzahl_we, k))
     return {"programme": ergebnisse}
 
 

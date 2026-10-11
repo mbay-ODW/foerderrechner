@@ -23,9 +23,13 @@ verwaltet). Fertig:
   kommunaler Zuschuss, WPB/SerSan/NH-Boni)
 - § 35c EStG-Steuerbonus als mitgerechnete Alternative pro Maßnahme
 - PDF-Export mit Branding (Logo/Firmenname/Kontakt/Akzentfarbe)
+- iSFP-Erstellung (BAFA-Energieberatung) als eigene Maßnahme: 50 %, max. 650 €
+  (EFH/ZFH) bzw. 850 € (ab 3 WE); bei WEG zusätzlich Erläuterung in der
+  Eigentümerversammlung (50 %, max. 250 € je WEG — nicht je Sitzung). Quelle:
+  Förderdatenbank des Bundes, vor Antragstellung Merkblatt prüfen
 - Beta: KfW-Nebenprogramme (Jung kauft Alt, Wohneigentumsprogramm, Altersgerecht
-  Umbauen, Gewerbe zu Wohnen) + iSFP-Erstellungsförderung — **nicht** durch die
-  Skill-Referenzen abgesichert, klar als unverifiziert gekennzeichnet
+  Umbauen, Gewerbe zu Wohnen) — **nicht** durch die Skill-Referenzen
+  abgesichert, klar als unverifiziert gekennzeichnet
 - HERO-Kundensuche (optional, analog Wärmebrücken-Tool): Kunde/Adresse per
   Live-Suche aus HERO übernehmen statt manuell einzutippen
 - Editierbarer Konditionen-Tab im Settings-Menü: alle Sätze/Boni/Höchstgrenzen/
@@ -34,7 +38,7 @@ verwaltet). Fertig:
 
 Alle skill-gestützten Module (BEG EM/Heizung/systemisch, §35c) sind gegen die
 Rechenbeispiele aus `beg-em-foerderung/references/*.md` per Unit-Test verifiziert
-(`tests/`, 36 Tests).
+(`tests/`).
 
 ## Lokal starten
 

@@ -10,14 +10,17 @@ Höchstgrenzen/-Summen, sondern in den gemeinsamen § 35c-Objekt-Deckel.
 from __future__ import annotations
 
 from .beg_em import (
+    ISFP_FAEHIGE_KATEGORIEN,
     berechne_em_massnahme,
     hoechstgrenze_em,
     hoechstgrenze_fachplanung,
+    isfp_bonus_neu,
 )
 from .beg_heizung import berechne_heizung_massnahme, hoechstbetrag_heizung_gesamt
 from .beg_systemisch import berechne_systemisch
+from .isfp_erstellung import berechne_isfp_erstellung
 from .konditionen_store import load_konditionen
-from .models import CalcInput, EMKategorie
+from .models import CalcInput, EMKategorie, Regime
 from .regime import bestimme_regime
 from .steuerbonus_35c import berechne_35c
 
@@ -29,10 +32,24 @@ def _kappe(summe_foerderfaehig: float, summe_zuschuss: float, grenze: float) -> 
     return summe_zuschuss, False
 
 
+def _kappung_anzeigen(ergebnisse: list, summe_foerderfaehig: float, grenze: float) -> None:
+    """Deckelung auch in den Einzelzeilen sichtbar machen (Zeilen summieren sich
+    sonst nicht zum gedeckelten Block-Zuschuss). Objekte mit .betrag/.rechenweg."""
+    if summe_foerderfaehig <= grenze or summe_foerderfaehig <= 0:
+        return
+    faktor = grenze / summe_foerderfaehig
+    for m in ergebnisse:
+        m.betrag *= faktor
+        m.satz_effektiv = m.betrag / m.massnahme.kosten
+        m.rechenweg.append(
+            f"Höchstgrenze {grenze:,.0f} € bei Kosten von {summe_foerderfaehig:,.0f} €: "
+            f"nur {faktor:.1%} der Kosten förderfähig"
+        )
+
+
 def berechne(calc_input: CalcInput) -> dict:
     k = load_konditionen()
     regime = bestimme_regime(calc_input.antragsdatum, calc_input.regime, k)
-    isfp_aktiv = any(m.isfp_vorhanden for m in calc_input.em_massnahmen)
 
     # ---------- BEG-EM (nur Maßnahmen ohne Steuerbonus-Flag) ----------
     em_ergebnisse, fachplanung_ergebnisse = [], []
@@ -46,6 +63,22 @@ def berechne(calc_input: CalcInput) -> dict:
             em_ergebnisse.append(erg)
 
     em_summe_foerderfaehig = sum(m.massnahme.kosten for m in em_ergebnisse)
+    # Maßnahmen, die für den iSFP-Bonus/die iSFP-Höchstgrenze in Frage kommen
+    isfp_ergebnisse = [
+        m for m in em_ergebnisse
+        if m.massnahme.isfp_vorhanden and m.massnahme.kategorie in ISFP_FAEHIGE_KATEGORIEN
+    ]
+    kosten_isfp = sum(m.massnahme.kosten for m in isfp_ergebnisse)
+
+    # NEU: Bonus nur auf den durch den iSFP zusätzlich förderfähigen Teil
+    # (gebäudeweit), Höchstgrenzen-Verdopplung nur wenn der Bonus greift.
+    isfp_bonus = None
+    if regime == Regime.NEU and isfp_ergebnisse:
+        isfp_bonus = isfp_bonus_neu(em_summe_foerderfaehig, kosten_isfp, calc_input.gebaeude, k)
+        isfp_aktiv = isfp_bonus["aktiv"]
+    else:
+        isfp_aktiv = bool(isfp_ergebnisse)
+
     em_summe_zuschuss_ungedeckelt = sum(m.betrag for m in em_ergebnisse)
     grenze_em, grenze_em_erklaerung = hoechstgrenze_em(
         calc_input.gebaeude, regime, isfp_aktiv, k
@@ -53,6 +86,20 @@ def berechne(calc_input: CalcInput) -> dict:
     em_summe_zuschuss, gedeckelt = _kappe(
         em_summe_foerderfaehig, em_summe_zuschuss_ungedeckelt, grenze_em
     )
+
+    _kappung_anzeigen(em_ergebnisse, em_summe_foerderfaehig, grenze_em)
+
+    if isfp_bonus is not None:
+        # Bonus ist bereits auf gedeckelter Basis berechnet → nicht nochmals kappen.
+        em_summe_zuschuss += isfp_bonus["betrag"]
+        em_summe_zuschuss_ungedeckelt += isfp_bonus["betrag"]
+        for m in isfp_ergebnisse:  # Anteil je Maßnahme (nach Kosten) für die Anzeige
+            anteil = isfp_bonus["betrag"] * m.massnahme.kosten / kosten_isfp
+            m.betrag += anteil
+            m.satz_effektiv = m.betrag / m.massnahme.kosten
+            m.rechenweg += isfp_bonus["rechenweg"] + (
+                [f"Anteil dieser Maßnahme am iSFP-Bonus: {anteil:,.2f} €"] if isfp_bonus["aktiv"] else []
+            )
 
     grenze_fachplanung, grenze_fachplanung_erklaerung = hoechstgrenze_fachplanung(
         calc_input.gebaeude, k
@@ -63,6 +110,8 @@ def berechne(calc_input: CalcInput) -> dict:
         fachplanung_summe_foerderfaehig, fachplanung_summe_zuschuss_ungedeckelt,
         grenze_fachplanung,
     )
+
+    _kappung_anzeigen(fachplanung_ergebnisse, fachplanung_summe_foerderfaehig, grenze_fachplanung)
 
     # ---------- Heizungsförderung (nur Maßnahmen ohne Steuerbonus-Flag) ----------
     heizung_ergebnisse = [
@@ -83,6 +132,14 @@ def berechne(calc_input: CalcInput) -> dict:
     heizung_zuschuss, heizung_gedeckelt = _kappe(
         heizung_foerderfaehig_summe, heizung_zuschuss_ungedeckelt, grenze_heizung
     )
+    if heizung_gedeckelt and heizung_foerderfaehig_summe > 0:
+        faktor = grenze_heizung / heizung_foerderfaehig_summe
+        for e in heizung_ergebnisse:
+            e["betrag"] = round(e["betrag"] * faktor, 2)
+            e["rechenweg"].append(
+                f"Höchstgrenze {grenze_heizung:,.0f} € bei förderfähigen Kosten von "
+                f"{heizung_foerderfaehig_summe:,.0f} €: nur {faktor:.1%} förderfähig"
+            )
 
     # ---------- § 35c EStG (Maßnahmen MIT Steuerbonus-Flag, gemeinsamer Objekt-Deckel) ----------
     kosten_35c = sum(
@@ -106,7 +163,15 @@ def berechne(calc_input: CalcInput) -> dict:
                 "nebeneinander angezeigt."
             )
 
-    zuschuss_gesamt = em_summe_zuschuss + fachplanung_summe_zuschuss + heizung_zuschuss
+    isfp_erstellung_ergebnis = (
+        berechne_isfp_erstellung(calc_input.isfp_erstellung, calc_input.gebaeude, k)
+        if calc_input.isfp_erstellung else None
+    )
+    isfp_erstellung_betrag = isfp_erstellung_ergebnis["betrag"] if isfp_erstellung_ergebnis else 0.0
+
+    zuschuss_gesamt = (
+        em_summe_zuschuss + fachplanung_summe_zuschuss + heizung_zuschuss + isfp_erstellung_betrag
+    )
     steuerbonus_betrag = steuerbonus_ergebnis["betrag_gesamt"] if steuerbonus_ergebnis else 0.0
 
     return {
@@ -142,6 +207,7 @@ def berechne(calc_input: CalcInput) -> dict:
             "zuschuss": round(fachplanung_summe_zuschuss, 2),
         },
         "steuerbonus_35c": steuerbonus_ergebnis,
+        "isfp_erstellung": isfp_erstellung_ergebnis,
         "zuschuss_gesamt": round(zuschuss_gesamt, 2),
         "gesamtvorteil_inkl_steuerbonus": round(zuschuss_gesamt + steuerbonus_betrag, 2),
     }

@@ -1,9 +1,9 @@
-"""BETA — KfW-Nebenprogramme + iSFP-/Energieberatungs-Förderung.
+"""BETA — KfW-Nebenprogramme.
 
 WICHTIG: Anders als `beg_em.py`/`beg_heizung.py`/`beg_systemisch.py` sind
 diese Werte NICHT aus einer geladenen, stand-verifizierten Skill-Referenz
 übernommen — für Jung kauft Alt, Wohneigentumsprogramm, Altersgerecht
-Umbauen, Gewerbe zu Wohnen und die iSFP-Erstellungsförderung existiert keine
+Umbauen, Gewerbe zu Wohnen existiert keine
 entsprechende Referenz in `beg-em-foerderung`/`gebaeudeenergierecht`. Die
 Zahlen hier sind Best-Effort-Strukturdaten (Kreditobergrenzen, grobe Sätze,
 im Settings-Tab „Konditionen" editierbar) — vor jeder Kundenberatung MUSS das
@@ -83,24 +83,3 @@ def gewerbe_zu_wohnen() -> dict:
         "pruefhinweis": PRUEFHINWEIS,
     }
 
-
-def isfp_erstellungsfoerderung(
-    kosten: float, anzahl_we: int, k: dict = DEFAULT_KONDITIONEN,
-) -> dict:
-    kn = k["kfw_nebenprogramme"]
-    satz = kn["isfp_zuschuss_satz"]
-    hoechstbetrag = (
-        kn["isfp_hoechstbetrag_mfh_ab_3_we"] if anzahl_we >= 3
-        else kn["isfp_hoechstbetrag_efh_zfh"]
-    )
-    betrag = min(kosten * satz, hoechstbetrag)
-    return {
-        "programm": "iSFP-/Energieberatungs-Förderung (BAFA)",
-        "kosten": kosten,
-        "satz": satz,
-        "hoechstbetrag": hoechstbetrag,
-        "betrag": round(betrag, 2),
-        "hinweis": "Zuschuss zur Erstellung des individuellen Sanierungsfahrplans selbst.",
-        "verifiziert": False,
-        "pruefhinweis": PRUEFHINWEIS,
-    }

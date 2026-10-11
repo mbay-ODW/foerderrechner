@@ -73,27 +73,10 @@ def berechne_em_massnahme(
             betrag = massnahme.kosten * satz
         return MassnahmeErgebnis(massnahme, satz, betrag, rechenweg)
 
-    # NEU-Regime
-    mindestinvest = kem["isfp_neu_mindestinvest"]
-    schwelle = kem["isfp_neu_schwelle"]
-
-    grundbetrag = massnahme.kosten * basissatz
-    betrag = grundbetrag
-    isfp_betrag = 0.0
-    if kann_isfp and massnahme.kosten >= mindestinvest:
-        ueberschuss = max(0.0, massnahme.kosten - schwelle)
-        isfp_betrag = ueberschuss * isfp_bonus
-        betrag += isfp_betrag
-        rechenweg.append(
-            f"iSFP-Bonus (NEU, nur auf Anteil > {schwelle:,.0f} €): "
-            f"+{isfp_bonus:.0%} × ({massnahme.kosten:,.0f} − {schwelle:,.0f} €) "
-            f"= {isfp_betrag:,.2f} €"
-        )
-    elif kann_isfp:
-        rechenweg.append(
-            f"iSFP-Bonus entfällt: Mindestinvest {mindestinvest:,.0f} € "
-            f"nicht erreicht (Kosten {massnahme.kosten:,.0f} €)"
-        )
+    # NEU-Regime: Grundbetrag (+ WPB). Der iSFP-Bonus hängt von Gebäude-
+    # Höchstgrenzen ab und wird deshalb gebäudeweit in `isfp_bonus_neu`
+    # berechnet (Engine), nicht je Einzelmaßnahme.
+    betrag = massnahme.kosten * basissatz
 
     wpb_betrag = 0.0
     if kann_wpb:
@@ -106,6 +89,58 @@ def berechne_em_massnahme(
 
     satz_effektiv = betrag / massnahme.kosten if massnahme.kosten else 0.0
     return MassnahmeErgebnis(massnahme, satz_effektiv, betrag, rechenweg)
+
+
+def isfp_bonus_neu(
+    kosten_gesamt: float, kosten_isfp: float, gebaeude: Gebaeude,
+    k: dict = DEFAULT_KONDITIONEN,
+) -> dict:
+    """iSFP-Bonus im NEU-Regime (Ri. 8.4.2), gebäudeweit.
+
+    Der Bonus (+5 Pp) gilt NUR auf den Teil der förderfähigen Ausgaben, der
+    erst durch den iSFP förderfähig wird: also oberhalb der Höchstgrenze OHNE
+    iSFP und bis zur (verdoppelten) Höchstgrenze MIT iSFP. Alles darüber ist
+    nicht förderfähig, alles darunter bekommt nur den Basissatz.
+
+        förderfähig  = min(Gesamtkosten, Höchstgrenze mit iSFP)
+        Bonus-Basis  = min(förderfähig − Höchstgrenze ohne iSFP, Kosten der iSFP-Maßnahmen)
+
+    Voraussetzung: iSFP-Maßnahmen mit Mindestinvest >= 30.000 € (Summe der
+    als iSFP-Maßnahme markierten Kosten). Beispiel EFH (30.000/60.000 €),
+    170.000 € Kosten: förderfähig 60.000 €, Basis 30.000 € → 1.500 € Bonus.
+    """
+    kem = k["beg_em"]
+    mindestinvest = kem["isfp_neu_mindestinvest"]
+    bonus_satz = kem["isfp_bonus"]
+    h_normal, _ = hoechstgrenze_em(gebaeude, Regime.NEU, False, k)
+    h_isfp, _ = hoechstgrenze_em(gebaeude, Regime.NEU, True, k)
+
+    if kosten_isfp <= 0:
+        return {"aktiv": False, "basis": 0.0, "betrag": 0.0, "rechenweg": [],
+                "h_normal": h_normal, "h_isfp": h_isfp}
+    if kosten_isfp < mindestinvest:
+        return {
+            "aktiv": False, "basis": 0.0, "betrag": 0.0,
+            "h_normal": h_normal, "h_isfp": h_isfp,
+            "rechenweg": [
+                f"iSFP-Bonus entfällt: Mindestinvest {mindestinvest:,.0f} € für die "
+                f"iSFP-Maßnahmen nicht erreicht (Kosten {kosten_isfp:,.0f} €)"
+            ],
+        }
+
+    foerderfaehig = min(kosten_gesamt, h_isfp)
+    ueber_normal = max(0.0, foerderfaehig - h_normal)
+    basis = min(ueber_normal, kosten_isfp)
+    betrag = basis * bonus_satz
+    rechenweg = [
+        f"iSFP-Bonus (NEU): nur auf den durch den iSFP zusätzlich förderfähigen Teil — "
+        f"förderfähig {foerderfaehig:,.0f} € (Kosten {kosten_gesamt:,.0f} €, iSFP-Höchstgrenze "
+        f"{h_isfp:,.0f} €) − Normal-Höchstgrenze {h_normal:,.0f} € = {ueber_normal:,.0f} €"
+        + (f", begrenzt auf iSFP-Maßnahmen {kosten_isfp:,.0f} €" if basis < ueber_normal else "")
+    ]
+    rechenweg.append(f"+{bonus_satz:.0%} × {basis:,.0f} € = {betrag:,.2f} €")
+    return {"aktiv": True, "basis": basis, "betrag": betrag, "rechenweg": rechenweg,
+            "h_normal": h_normal, "h_isfp": h_isfp}
 
 
 def hoechstgrenze_em(

@@ -4,7 +4,7 @@ stille Rechenfehler bei Boni-Kombinationen."""
 
 from datetime import date
 
-from app.calc.beg_em import berechne_em_massnahme, hoechstgrenze_em
+from app.calc.beg_em import berechne_em_massnahme, hoechstgrenze_em, isfp_bonus_neu
 from app.calc.models import EMKategorie, EMMassnahme, Gebaeude, GebaeudeTyp, Regime
 
 ANTRAGSDATUM_ALT = date(2026, 6, 1)
@@ -26,19 +26,50 @@ def test_alt_huelle_mit_isfp_ist_20_prozent():
     assert erg.betrag == 2_000
 
 
+EFH = Gebaeude(typ=GebaeudeTyp.WG, anzahl_we=1)
+
+
 def test_neu_isfp_rechenbeispiel_dach_50000():
     """konditionen-neu.md: 'Dach 50.000 € förderfähig, iSFP vorhanden:
     15% × 50.000 = 7.500 € + 5% × (50.000 − 30.000) = 1.000 € → 8.500 €'"""
     m = EMMassnahme(kategorie=EMKategorie.HUELLE, kosten=50_000, isfp_vorhanden=True)
-    erg = berechne_em_massnahme(m, Regime.NEU, ANTRAGSDATUM_NEU)
-    assert erg.betrag == 8_500
+    grund = berechne_em_massnahme(m, Regime.NEU, ANTRAGSDATUM_NEU)
+    bonus = isfp_bonus_neu(50_000, 50_000, EFH)
+    assert grund.betrag == 7_500
+    assert bonus["basis"] == 20_000
+    assert bonus["betrag"] == 1_000
 
 
-def test_neu_isfp_entfaellt_unter_mindestinvest():
-    m = EMMassnahme(kategorie=EMKategorie.HUELLE, kosten=20_000, isfp_vorhanden=True)
-    erg = berechne_em_massnahme(m, Regime.NEU, ANTRAGSDATUM_NEU)
-    assert erg.betrag == 20_000 * 0.15
-    assert erg.satz_effektiv == 0.15
+def test_neu_isfp_bonus_nur_auf_durch_isfp_zusaetzlich_foerderfaehigen_teil():
+    """170.000 € bei EFH: förderfähig nur bis iSFP-Höchstgrenze 60.000 €, davon
+    30.000 € über der Normal-Höchstgrenze → Bonus 5 % × 30.000 = 1.500 €
+    (NICHT 5 % × (170.000 − 30.000) = 7.000 €)."""
+    bonus = isfp_bonus_neu(170_000, 170_000, EFH)
+    assert bonus["basis"] == 30_000
+    assert bonus["betrag"] == 1_500
+
+
+def test_neu_isfp_bonus_mfh_4we():
+    # Normal 30k + 3×15k = 75k, mit iSFP 60k + 3×30k = 150k → Differenz 75k
+    mfh = Gebaeude(typ=GebaeudeTyp.WG, anzahl_we=4)
+    bonus = isfp_bonus_neu(170_000, 170_000, mfh)
+    assert bonus["basis"] == 75_000
+    assert bonus["betrag"] == 3_750
+
+
+def test_neu_isfp_bonus_begrenzt_auf_kosten_der_isfp_massnahmen():
+    # 100.000 € gesamt, aber nur 40.000 € davon iSFP-Maßnahmen: Basis max. 40.000
+    bonus = isfp_bonus_neu(100_000, 40_000, EFH)
+    assert bonus["basis"] == 30_000  # förderfähig 60k − 30k, kleiner als 40k
+    bonus = isfp_bonus_neu(100_000, 35_000, Gebaeude(typ=GebaeudeTyp.WG, anzahl_we=3))
+    # 3 WE: normal 60k, iSFP 120k → förderfähig 100k, Differenz 40k, begrenzt auf 35k
+    assert bonus["basis"] == 35_000
+
+
+def test_neu_isfp_bonus_entfaellt_unter_mindestinvest():
+    bonus = isfp_bonus_neu(20_000, 20_000, EFH)
+    assert bonus["aktiv"] is False
+    assert bonus["betrag"] == 0
 
 
 def test_neu_wpb_bonus_nur_ab_q1_2027_und_nur_daemmung():

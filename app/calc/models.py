@@ -97,6 +97,15 @@ class SystemischeSanierung(BaseModel):
     fachplanung_kosten: float = 0.0
 
 
+class ISFPErstellung(BaseModel):
+    """Energieberatung für Wohngebäude (BAFA): Erstellung des iSFP selbst.
+    `weg_erlaeuterung_kosten` = Honorar für die Erläuterung des Berichts in
+    der Eigentümerversammlung (nur WEG/ab 3 WE; Zuschuss-Deckel gilt je WEG,
+    nicht je Sitzung)."""
+    kosten: float = Field(gt=0)
+    weg_erlaeuterung_kosten: float = Field(default=0.0, ge=0)
+
+
 class Kunde(BaseModel):
     """Rein informativ (Anzeige/PDF) — fließt in keine Förderberechnung ein.
     Kann manuell erfasst oder aus HERO übernommen werden (hero_ref = Projekt-
@@ -116,4 +125,5 @@ class CalcInput(BaseModel):
     em_massnahmen: list[EMMassnahme] = []
     heizung_massnahmen: list[HeizungMassnahme] = []
     systemische_sanierung: SystemischeSanierung | None = None
+    isfp_erstellung: ISFPErstellung | None = None
     kunde: Kunde | None = None

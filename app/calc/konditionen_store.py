@@ -58,7 +58,6 @@ DEFAULT_KONDITIONEN: dict[str, Any] = {
         "isfp_bonus": 0.05,
         "wpb_bonus": 0.05,
         "isfp_neu_mindestinvest": 30000.0,
-        "isfp_neu_schwelle": 30000.0,
         "fachplanung_hoechstgrenze_efh_zfh": 5000.0,
         "fachplanung_hoechstgrenze_je_we_mfh": 2000.0,
         "fachplanung_hoechstgrenze_max": 20000.0,
@@ -128,9 +127,13 @@ DEFAULT_KONDITIONEN: dict[str, Any] = {
         "jung_kauft_alt_einkommensgrenze_je_weiteres_kind": 10000.0,
         "wohneigentumsprogramm_kredit_max": 100000.0,
         "altersgerecht_umbauen_kredit_max_je_we": 50000.0,
-        "isfp_zuschuss_satz": 0.50,
-        "isfp_hoechstbetrag_efh_zfh": 650.0,
-        "isfp_hoechstbetrag_mfh_ab_3_we": 1300.0,
+    },
+    "isfp_erstellung": {
+        "satz": 0.50,
+        "hoechstbetrag_efh_zfh": 650.0,
+        "hoechstbetrag_ab_3_we": 850.0,
+        "weg_erlaeuterung_satz": 0.50,
+        "weg_erlaeuterung_hoechstbetrag_je_weg": 250.0,
     },
 }
 
@@ -150,13 +153,17 @@ def ensure_bootstrap() -> None:
         _write(DEFAULT_KONDITIONEN)
 
 
-def _deep_merge(base: dict, overlay: dict) -> dict:
-    result = copy.deepcopy(base)
-    for key, value in overlay.items():
-        if isinstance(value, dict) and isinstance(result.get(key), dict):
-            result[key] = _deep_merge(result[key], value)
+def _merge_known(base: dict, overlay: dict) -> dict:
+    """Defaults als Schema: fehlende Schlüssel kommen aus `base`, unbekannte
+    (z. B. nach Umbauten verwaiste oder vertippte) Schlüssel aus `overlay`
+    werden verworfen, damit der Editor nie Felder ohne Wirkung zeigt."""
+    result: dict = {}
+    for key, bval in base.items():
+        if key in overlay:
+            oval = overlay[key]
+            result[key] = _merge_known(bval, oval) if isinstance(bval, dict) and isinstance(oval, dict) else oval
         else:
-            result[key] = value
+            result[key] = copy.deepcopy(bval)
     return result
 
 
@@ -170,11 +177,11 @@ def load_konditionen() -> dict[str, Any]:
     except Exception:
         log.exception("konditionen.json korrupt, verwende Defaults")
         return copy.deepcopy(DEFAULT_KONDITIONEN)
-    return _deep_merge(DEFAULT_KONDITIONEN, saved)
+    return _merge_known(DEFAULT_KONDITIONEN, saved)
 
 
 def save_konditionen(data: dict[str, Any]) -> dict[str, Any]:
-    merged = _deep_merge(DEFAULT_KONDITIONEN, data)
+    merged = _merge_known(DEFAULT_KONDITIONEN, data)
     _write(merged)
     return merged
 

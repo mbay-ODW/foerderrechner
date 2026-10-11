@@ -136,6 +136,14 @@ def generate_pdf(
     ]
     story += _massnahmen_tabelle("Heizungsförderung", heizung_massnahmen, styles, accent)
 
+    isfp = calc_result.get("isfp_erstellung")
+    if isfp:
+        story.append(Paragraph("iSFP-Erstellung (BAFA-Energieberatung)", styles["H2"]))
+        for zeile in isfp["rechenweg"]:
+            story.append(Paragraph(f"• {zeile}", styles["Normal"]))
+        story.append(Paragraph(f"Zuschuss iSFP-Erstellung: {_euro(isfp['betrag'])}", styles["Normal"]))
+        story.append(Spacer(1, 8))
+
     steuerbonus = calc_result.get("steuerbonus_35c")
     if steuerbonus:
         story.append(Paragraph("§ 35c-Steuerbonus (statt BEG-Zuschuss)", styles["H2"]))

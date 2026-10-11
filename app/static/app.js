@@ -18,6 +18,7 @@ const KATEGORIEN = [
   { value: "heizungsopt_eff", label: "Heizungsoptimierung — Effizienz (5.4a)" },
   { value: "heizungsopt_em", label: "Heizungsoptimierung — Emissionsminderung (5.4b)" },
   { value: "fachplanung", label: "Fachplanung & Baubegleitung (5.5)" },
+  { value: "isfp_erstellung", label: "iSFP-Erstellung (BAFA-Energieberatung, eigenes Programm)" },
 ];
 
 let massnahmeCounter = 0;
@@ -40,17 +41,24 @@ function addMassnahmeRow(prefill = {}) {
         <input class="mn-bezeichnung" type="text" placeholder="z. B. Dach dämmen" />
       </label>
       <label>
-        <span>Förderfähige Kosten (€)</span>
+        <span class="mn-kosten-label">Förderfähige Kosten (€)</span>
         <input class="mn-kosten" type="number" min="0" step="0.01" />
       </label>
     </div>
-    <div class="row mn-optionen">
+    <div class="mn-weg-wrap hidden">
+      <label>
+        <span>Honorar Erläuterung in der Eigentümerversammlung (€, WEG)</span>
+        <input class="mn-weg-kosten" type="number" min="0" step="0.01" placeholder="optional" />
+      </label>
+      <p class="muted small" style="margin-top:-6px;">Zuschuss: 50&nbsp;%, max. 250&nbsp;€ je beratener WEG — nicht je Sitzung, mehrere Versammlungen erhöhen den Deckel nicht.</p>
+    </div>
+    <div class="row mn-optionen mn-em-optionen">
       <label class="checkbox-label"><input type="checkbox" class="mn-isfp" /> iSFP vorhanden</label>
       <label class="checkbox-label mn-daemmung-wrap"><input type="checkbox" class="mn-daemmung" /> davon Dämmung (5.1a)</label>
       <label class="checkbox-label mn-daemmung-wrap"><input type="checkbox" class="mn-wpb" /> WPB-Gebäude nachgewiesen</label>
     </div>
     <div class="row mn-optionen">
-      <label class="checkbox-label"><input type="checkbox" class="mn-steuerbonus" /> § 35c-Steuerbonus statt BEG-Zuschuss beantragen</label>
+      <label class="checkbox-label mn-steuer-wrap"><input type="checkbox" class="mn-steuerbonus" /> § 35c-Steuerbonus statt BEG-Zuschuss beantragen</label>
       <button class="secondary small danger mn-remove" type="button">Entfernen</button>
     </div>
   `;
@@ -59,9 +67,17 @@ function addMassnahmeRow(prefill = {}) {
   const kategoriaSelect = wrap.querySelector(".mn-kategorie");
   const daemmungWraps = wrap.querySelectorAll(".mn-daemmung-wrap");
   function updateVisibility() {
-    const isHuelle = kategoriaSelect.value === "huelle";
-    daemmungWraps.forEach(el => el.classList.toggle("hidden", !isHuelle));
+    const kat = kategoriaSelect.value;
+    const isIsfp = kat === "isfp_erstellung";
+    daemmungWraps.forEach(el => el.classList.toggle("hidden", kat !== "huelle"));
+    wrap.querySelector(".mn-em-optionen").classList.toggle("hidden", isIsfp);
+    wrap.querySelector(".mn-steuer-wrap").classList.toggle("hidden", isIsfp);
+    wrap.querySelector(".mn-kosten-label").textContent = isIsfp
+      ? "Preis iSFP-Erstellung (€)" : "Förderfähige Kosten (€)";
+    // Erläuterung in der Eigentümerversammlung: nur WEG (ab 3 WE)
+    wrap.querySelector(".mn-weg-wrap").classList.toggle("hidden", !(isIsfp && istWeg()));
   }
+  wrap._update = updateVisibility;
   kategoriaSelect.addEventListener("change", updateVisibility);
   updateVisibility();
 
@@ -73,6 +89,15 @@ function addMassnahmeRow(prefill = {}) {
 }
 
 $("btn-add-massnahme").addEventListener("click", () => addMassnahmeRow());
+
+// WEG = Wohngebäude ab 3 Wohneinheiten (Höchstbeträge/Erläuterungs-Zuschuss iSFP)
+function istWeg() {
+  return $("gebaeude-typ").value === "WG" && (parseInt($("anzahl-we").value, 10) || 1) >= 3;
+}
+function aktualisiereMassnahmenZeilen() {
+  document.querySelectorAll("#massnahmen-liste .massnahme-row").forEach(r => r._update && r._update());
+}
+$("anzahl-we").addEventListener("input", aktualisiereMassnahmenZeilen);
 
 const WAERMEQUELLEN = [
   { value: "sonstige_ee", label: "Sonstige EE-Heizung (Biomasse, Solarthermie, …)" },
@@ -149,6 +174,7 @@ $("gebaeude-typ").addEventListener("change", () => {
   const isNwg = $("gebaeude-typ").value === "NWG";
   $("feld-anzahl-we").classList.toggle("hidden", isNwg);
   $("feld-nwg-flaeche").classList.toggle("hidden", !isNwg);
+  aktualisiereMassnahmenZeilen();
 });
 
 function heute() {
@@ -158,9 +184,10 @@ function heute() {
 }
 
 function sammleMassnahmen() {
-  const rows = document.querySelectorAll(".massnahme-row");
+  const rows = document.querySelectorAll("#massnahmen-liste .massnahme-row");
   const massnahmen = [];
   for (const row of rows) {
+    if (row.querySelector(".mn-kategorie").value === "isfp_erstellung") continue;
     const kosten = parseFloat(row.querySelector(".mn-kosten").value);
     if (!kosten || kosten <= 0) continue;
     massnahmen.push({
@@ -174,6 +201,20 @@ function sammleMassnahmen() {
     });
   }
   return massnahmen;
+}
+
+// iSFP-Erstellung (BAFA-Energieberatung): höchstens eine Zeile je Berechnung
+function sammleIsfpErstellung() {
+  const rows = [...document.querySelectorAll("#massnahmen-liste .massnahme-row")]
+    .filter(r => r.querySelector(".mn-kategorie").value === "isfp_erstellung");
+  const mitKosten = rows.filter(r => parseFloat(r.querySelector(".mn-kosten").value) > 0);
+  if (mitKosten.length > 1) toast("Nur eine iSFP-Erstellung je Berechnung — es zählt die erste Zeile.", "error");
+  const row = mitKosten[0];
+  if (!row) return null;
+  return {
+    kosten: parseFloat(row.querySelector(".mn-kosten").value),
+    weg_erlaeuterung_kosten: istWeg() ? (parseFloat(row.querySelector(".mn-weg-kosten").value) || 0) : 0,
+  };
 }
 
 function euro(n) {
@@ -297,6 +338,23 @@ $("systemisch-aktiv").addEventListener("change", () => {
   $("systemisch-felder").classList.toggle("hidden", !$("systemisch-aktiv").checked);
 });
 
+function renderIsfpErstellungBlock(erg) {
+  if (!erg) return "";
+  return `
+    <div class="ergebnis-block">
+      <h3>iSFP-Erstellung (BAFA-Energieberatung)</h3>
+      <div class="ergebnis-massnahme">
+        <div class="muted small">Honorar: ${euro(erg.kosten)}${erg.weg_erlaeuterung_kosten ? ` · Erläuterung Eigentümerversammlung: ${euro(erg.weg_erlaeuterung_kosten)}` : ""}</div>
+        <ul class="rechenweg">${erg.rechenweg.map(r => `<li>${r}</li>`).join("")}</ul>
+        <div class="hint" style="margin-top:8px;">${erg.pruefhinweis}</div>
+      </div>
+      <div class="ergebnis-summe-zeile total">
+        <span>Zuschuss iSFP-Erstellung</span><span>${euro(erg.betrag)}</span>
+      </div>
+    </div>
+  `;
+}
+
 function renderSteuerbonusBlock(erg) {
   if (!erg) return "";
   return `
@@ -397,7 +455,6 @@ $("btn-beta-berechnen").addEventListener("click", async () => {
         anzahl_kinder: parseInt($("beta-kinder").value, 10) || 0,
         zve_haushalt: parseFloat($("beta-zve").value) || null,
         anzahl_we: parseInt($("anzahl-we").value, 10) || 1,
-        isfp_kosten: parseFloat($("beta-isfp-kosten").value) || null,
       }),
     });
     const data = await res.json();
@@ -412,7 +469,6 @@ $("btn-beta-berechnen").addEventListener("click", async () => {
         <div class="muted small">${p.hinweis}</div>
         ${p.kredit_max ? `<div class="small">Kredit max.: ${euro(p.kredit_max)}</div>` : ""}
         ${p.einkommensgrenze ? `<div class="small">Einkommensgrenze: ${euro(p.einkommensgrenze)}${p.vermutlich_berechtigt === false ? " — vermutlich nicht erfüllt" : ""}</div>` : ""}
-        ${p.betrag !== undefined ? `<div class="small">Zuschuss: ${euro(p.betrag)} (${(p.satz * 100).toFixed(0)}%, max. ${euro(p.hoechstbetrag)})</div>` : ""}
         <div class="hint" style="margin-top:8px;">${p.pruefhinweis}</div>
       </div>
     `).join("");
@@ -470,6 +526,7 @@ $("btn-berechnen").addEventListener("click", async () => {
     },
     em_massnahmen: sammleMassnahmen(),
     heizung_massnahmen: sammleHeizungMassnahmen(),
+    isfp_erstellung: sammleIsfpErstellung(),
     systemische_sanierung: null,
     kunde: sammleKunde(),
   };
@@ -489,7 +546,7 @@ $("btn-berechnen").addEventListener("click", async () => {
     }
   }
 
-  if (!payload.em_massnahmen.length && !payload.heizung_massnahmen.length && !payload.systemische_sanierung) {
+  if (!payload.em_massnahmen.length && !payload.heizung_massnahmen.length && !payload.systemische_sanierung && !payload.isfp_erstellung) {
     toast("Bitte mindestens eine Maßnahme mit Kosten eingeben.", "error");
     return;
   }
@@ -517,6 +574,7 @@ $("btn-berechnen").addEventListener("click", async () => {
         ${renderMassnahmenBlock("BEG-Einzelmaßnahmen", data.beg_em)}
         ${renderMassnahmenBlock("Fachplanung & Baubegleitung", data.fachplanung)}
         ${renderHeizungBlock(data.beg_heizung)}
+        ${renderIsfpErstellungBlock(data.isfp_erstellung)}
         ${renderSteuerbonusBlock(data.steuerbonus_35c)}
         ${renderSystemischBlock(data.beg_systemisch)}
         <div class="ergebnis-summe-zeile total">
