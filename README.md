@@ -1,5 +1,10 @@
 # Förderrechner
 
+> **Abgelöst (11.10.2026):** Der Rechenkern läuft jetzt als Werkzeug im eee-portal (Fork
+> `mbay-ODW/eee-projektportal`, Paket `eee_portal.foerderrechner`, ADR-26) mit Konditionen,
+> Varianten je Projekt und Neubau (KfW 296, 297/298, 300). Der eigenständige Stack ist gestoppt;
+> Änderungen am Rechenkern bitte dort vornehmen.
+
 Eigenständiger Förderrechner für die Wohngebäude-Sanierung: BEG Einzelmaßnahmen,
 BEG-Heizungsförderung, BEG WG/NWG systemische Sanierung (Effizienzhaus/-gebäude),
 §35c-EStG-Steuerbonus als mitgerechnete Alternative, iSFP-Förderung. Fachlich
