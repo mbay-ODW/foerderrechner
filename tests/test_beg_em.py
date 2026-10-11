@@ -115,3 +115,15 @@ def test_hoechstgrenze_neu_efh_mit_isfp():
     gebaeude = Gebaeude(typ=GebaeudeTyp.WG, anzahl_we=1)
     grenze, _ = hoechstgrenze_em(gebaeude, Regime.NEU, isfp_aktiv=True)
     assert grenze == 60_000
+
+
+def test_neu_isfp_bonus_mfh_10we_schwelle_ist_volle_we_staffel():
+    """10 WE: Ohne-iSFP-Höchstgrenze 30k + 5×15k + 4×8k = 137.000 €, mit iSFP
+    60k + 5×30k + 4×15k = 270.000 €. Bei 170.000 € Kosten: Bonus nur auf die
+    33.000 € oberhalb von 137.000 € → 1.650 € (nicht 5 % × (170.000 − 30.000))."""
+    mfh10 = Gebaeude(typ=GebaeudeTyp.WG, anzahl_we=10)
+    assert hoechstgrenze_em(mfh10, Regime.NEU, False)[0] == 137_000
+    assert hoechstgrenze_em(mfh10, Regime.NEU, True)[0] == 270_000
+    bonus = isfp_bonus_neu(170_000, 170_000, mfh10)
+    assert bonus["basis"] == 33_000
+    assert bonus["betrag"] == 1_650
